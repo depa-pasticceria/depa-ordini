@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DEPA Ordini</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ffffff; --surface:#f1f1ef; --ink:#000000; --muted:#6a6a6a; --line:#d9d9d6;
+  --crema:#E9C96E; --on-crema:#000; --warn:#b3261e;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#000000; --surface:#151515; --ink:#f3f3f1; --muted:#8e8e8e; --line:#2b2b2b;
+    --crema:#E9C96E; --on-crema:#000; --warn:#ff8a80; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000000; --surface:#151515; --ink:#f3f3f1; --muted:#8e8e8e; --line:#2b2b2b;
+  --crema:#E9C96E; --on-crema:#000; --warn:#ff8a80; color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Archivo",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.4;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--crema);outline-offset:2px}
+.wrap{max-width:720px;margin:0 auto;padding:0 18px 120px}
+
+/* Header */
+header{display:flex;align-items:flex-end;justify-content:space-between;padding:18px 0 14px;border-bottom:3px solid var(--ink)}
+.brand{font-weight:900;font-stretch:125%;font-size:34px;letter-spacing:-.01em;line-height:.9}
+.brand small{display:block;font-weight:500;font-stretch:100%;font-size:14px;color:var(--muted);letter-spacing:0;margin-top:6px}
+.today{text-align:right;font-size:14px;color:var(--muted)}
+
+/* Filters / chips */
+.chips{display:flex;gap:8px;overflow-x:auto;padding:14px 0 4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1.5px solid var(--line);background:transparent;border-radius:999px;padding:8px 14px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip:disabled{opacity:.35;cursor:not-allowed;text-decoration:line-through}
+
+/* Day groups */
+.day{margin-top:26px}
+.dayhead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:6px}
+.dayhead h2{margin:0;font-weight:900;font-stretch:62%;font-size:52px;line-height:.85;letter-spacing:-.01em}
+.dayhead p{margin:0;font-size:14px;color:var(--muted);text-align:right}
+.ord{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:14px 0;cursor:pointer}
+.ord:hover .m b{text-decoration:underline}
+.ord .t{font-weight:800;font-stretch:80%;font-size:20px}
+.ord .m{min-width:0}
+.ord .m b{display:block;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ord .m span{display:block;font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ord .m .due{color:var(--warn)}
+.st{font-size:13px;font-weight:700;padding:5px 10px;border-radius:4px;white-space:nowrap;border:1.5px solid var(--ink)}
+.s-confermato{background:transparent}
+.s-produzione{background:var(--crema);color:var(--on-crema);border-color:var(--crema)}
+.s-pronto{background:var(--ink);color:var(--bg)}
+.s-ritirato{border-color:var(--line);color:var(--muted)}
+.ord.done .m b,.ord.done .t{color:var(--muted);text-decoration:line-through}
+.empty{padding:48px 0;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-size:20px;margin-bottom:6px}
+.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;padding:24px 0 0;font-size:14px}
+
+/* Produzione */
+.prod-list{margin-top:18px;border-top:3px solid var(--ink)}
+.prow{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.prow .q{font-weight:900;font-stretch:62%;font-size:40px;line-height:.9;min-width:64px}
+.prow .n{flex:1;font-weight:600}
+.prow .c{font-size:14px;color:var(--muted)}
+h3{font-size:15px;font-weight:700;margin:30px 0 8px;color:var(--muted)}
+.lab{border-left:4px solid var(--crema);padding:10px 0 10px 14px;margin-bottom:12px;background:var(--surface)}
+.lab b{display:block}
+.lab .scritta{font-style:italic;margin-top:4px}
+.lab .all{color:var(--warn);font-weight:700;font-size:14px;margin-top:4px}
+.lab .note{font-size:14px;color:var(--muted);margin-top:4px}
+
+/* Form */
+form{margin-top:10px}
+.f{margin-top:18px}
+.f label,.f .lbl{display:block;font-size:14px;font-weight:700;margin-bottom:6px}
+.f input,.f textarea,.f select{width:100%;background:var(--surface);border:1.5px solid transparent;border-radius:6px;padding:12px;font-size:16px}
+.f input:focus,.f textarea:focus{border-color:var(--ink);outline:none}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.f .chips{padding-top:0}
+.hint{font-size:13px;color:var(--muted);margin-top:4px}
+.primary{width:100%;margin-top:26px;background:var(--ink);color:var(--bg);border:0;border-radius:6px;padding:16px;font-weight:800;font-size:17px;cursor:pointer}
+.primary:active{transform:scale(.99)}
+
+/* Bottom nav */
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
+nav .in{max-width:720px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr}
+nav button{background:none;border:0;padding:14px 4px;font-weight:700;font-size:15px;color:var(--muted);cursor:pointer;border-top:3px solid transparent;margin-top:-1px}
+nav button[aria-current="page"]{color:var(--ink);border-top-color:var(--ink)}
+nav button.new{color:var(--ink)}
+nav button.new span{background:var(--crema);color:var(--on-crema);padding:6px 14px;border-radius:999px}
+
+/* Sheet */
+dialog{border:0;padding:0;margin:auto auto 0;width:100%;max-width:720px;max-height:90%;background:var(--bg);color:var(--ink);border-radius:14px 14px 0 0;border-top:3px solid var(--ink)}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+.sheet{padding:22px 20px calc(24px + env(safe-area-inset-bottom,0px))}
+.sheet h2{margin:0;font-weight:900;font-stretch:80%;font-size:30px;line-height:1}
+.sheet .sub{color:var(--muted);margin-top:6px}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:8px 12px;margin-top:18px;font-size:15px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-weight:600}
+.kv .warn{color:var(--warn)}
+.flow{display:flex;gap:6px;margin-top:20px}
+.flow button{flex:1;padding:10px 4px;font-size:13px;font-weight:700;border:1.5px solid var(--line);background:none;border-radius:4px;cursor:pointer}
+.flow button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+.acts a,.acts button{display:block;text-align:center;padding:14px;border-radius:6px;font-weight:700;text-decoration:none;cursor:pointer;border:1.5px solid var(--ink);background:none}
+.acts .wa{background:var(--crema);color:var(--on-crema);border-color:var(--crema);grid-column:1/-1}
+.acts .del{border-color:var(--line);color:var(--warn)}
+
+/* Toast */
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:6px;font-weight:700;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:10}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion: reduce){.toast{transition:none}}
+[hidden]{display:none!important}
+
+/* Comande: pulsanti e anteprima */
+.printbar{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}
+.ghost{padding:13px;border:1.5px solid var(--ink);background:none;border-radius:6px;font-weight:700;cursor:pointer}
+.ptools{display:flex;gap:10px;align-items:center;padding:16px 0}
+.ptools .ghost{flex:0 0 auto}
+.ptools .primary{margin:0;flex:1}
+.phint{font-size:13px;color:var(--muted);margin:0 0 14px}
+.psheet{background:#fff;color:#000;padding:18px;border-radius:4px}
+.pday+.pday{margin-top:28px;padding-top:24px;border-top:1px dashed #999}
+.pday h2{margin:0;font-weight:900;font-stretch:62%;font-size:46px;line-height:.9}
+.pday .gen{font-size:12px;color:#555;margin-top:4px}
+.psum{display:flex;flex-wrap:wrap;gap:6px 20px;margin:12px 0 14px;padding:10px 0;border-top:3px solid #000;border-bottom:1px solid #000;font-size:14px}
+.psum b{font-size:22px;font-weight:900;font-stretch:70%;margin-right:4px}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:520px){.cards{grid-template-columns:1fr}}
+.cmd{border:2px solid #000;padding:10px 12px;break-inside:avoid;page-break-inside:avoid;font-size:13px}
+.cmd .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border-bottom:1px solid #000;padding-bottom:6px}
+.cmd .ora{font-weight:900;font-stretch:70%;font-size:26px;line-height:1}
+.cmd .cli{font-weight:700;text-align:right}
+.cmd .cli small{display:block;font-weight:500}
+.cmd .what{font-weight:800;font-size:17px;margin:8px 0 4px}
+.cmd .scr{font-style:italic;margin-top:2px}
+.cmd .all{font-weight:800;border:2px solid #000;padding:2px 6px;display:inline-block;margin-top:5px}
+.cmd .nt{margin-top:4px}
+.cmd .foot{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;padding-top:6px;border-top:1px dashed #000;font-size:12px}
+.cmd .box{display:inline-block;width:12px;height:12px;border:1.5px solid #000;vertical-align:-2px;margin-right:4px}
+
+@media print{
+  @page{size:A4;margin:12mm}
+  :root,:root:not([data-theme="light"]),:root[data-theme="dark"]{padding:0;--bg:#fff;--ink:#000;color-scheme:light}
+  body{background:#fff;color:#000}
+  header,nav,.toast,dialog,.noprint,#v-agenda,#v-prod,#v-new{display:none!important}
+  #v-print{display:block!important}
+  .wrap{padding:0;max-width:none}
+  .psheet{padding:0}
+  .cards{grid-template-columns:1fr 1fr}
+  .pday+.pday{margin-top:0;padding-top:0;border-top:0}
+  .pday{break-after:page;page-break-after:always}
+  .pday:last-child{break-after:auto;page-break-after:auto}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">DEPA<small>Ordini su misura</small></div>
+    <div class="today" id="today"></div>
+  </header>
+
+  <section id="v-agenda">
+    <div class="chips" role="group" aria-label="Filtro">
+      <button class="chip" data-filter="todo" aria-pressed="true">Da consegnare</button>
+      <button class="chip" data-filter="all" aria-pressed="false">Tutti</button>
+    </div>
+    <div id="agenda"></div>
+    <button class="linkbtn" id="reset">Ripristina dati di esempio</button>
+  </section>
+
+  <section id="v-prod" hidden>
+    <div class="chips" id="prodDays"></div>
+    <div id="prod"></div>
+    <div class="printbar">
+      <button class="ghost" data-print="day">Comande del giorno</button>
+      <button class="ghost" data-print="week">Comande della settimana</button>
+    </div>
+  </section>
+
+  <section id="v-print" hidden>
+    <div class="ptools noprint">
+      <button class="ghost" id="pback">Indietro</button>
+      <button class="primary" id="pgo">Stampa</button>
+    </div>
+    <p class="phint noprint">In settimana ogni giorno esce su un foglio A4 separato. Se il tasto non risponde, usa Stampa dal menu del browser.</p>
+    <div class="psheet" id="psheet"></div>
+  </section>
+
+  <section id="v-new" hidden>
+    <form id="form" autocomplete="off">
+      <div class="f"><label for="cliente">Cliente</label><input id="cliente" required placeholder="Nome e cognome o azienda"></div>
+      <div class="f"><label for="tel">Telefono</label><input id="tel" type="tel" inputmode="tel" required placeholder="333 123 4567"></div>
+      <div class="f"><span class="lbl">Tipo</span>
+        <div class="chips" id="tipi"></div></div>
+      <div class="f row2">
+        <div style="grid-column:1/-1"><label for="prodotto">Prodotto</label><input id="prodotto" list="prodotti" required placeholder="Es. torta chantilly e amarene"></div>
+      </div>
+      <datalist id="prodotti"></datalist>
+      <div class="f row2">
+        <div><label for="qty">Quantità</label><input id="qty" type="number" min="1" value="1" inputmode="numeric"></div>
+        <div><label for="ora">Ora ritiro</label><input id="ora" type="time" value="17:00"></div>
+      </div>
+      <div class="f"><span class="lbl">Giorno di ritiro</span>
+        <div class="chips" id="giorni"></div>
+        <input id="data" type="date" aria-label="Altra data" style="margin-top:6px">
+        <div class="hint">Il lunedì siamo chiusi.</div></div>
+      <div class="f"><label for="scritta">Scritta sulla torta</label><input id="scritta" placeholder="Facoltativa"></div>
+      <div class="f"><label for="allergeni">Allergeni e intolleranze</label><input id="allergeni" placeholder="Es. no frutta a guscio"></div>
+      <div class="f row2">
+        <div><label for="totale">Totale €</label><input id="totale" type="number" min="0" step="0.5" inputmode="decimal"></div>
+        <div><label for="acconto">Acconto €</label><input id="acconto" type="number" min="0" step="0.5" inputmode="decimal"></div>
+      </div>
+      <div class="f"><label for="note">Note</label><textarea id="note" rows="2" placeholder="Decorazioni, colori, riferimenti foto"></textarea></div>
+      <button class="primary" type="submit">Salva ordine</button>
+    </form>
+  </section>
+</div>
+
+<nav><div class="in">
+  <button data-view="agenda" aria-current="page">Agenda</button>
+  <button data-view="prod">Produzione</button>
+  <button data-view="new" class="new"><span>+ Nuovo</span></button>
+</div></nav>
+
+<dialog id="sheet"><div class="sheet" id="sheetBody"></div></dialog>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+const KEY='depa-ordini-v1';
+const GG=['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
+const MESI=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+const FLOW=[['confermato','Confermato'],['produzione','In produzione'],['pronto','Pronto'],['ritirato','Ritirato']];
+const LBL=Object.fromEntries(FLOW);
+const TIPI=['Su misura','Cerimonia','Aziendale','Stagionale'];
+const PRODOTTI=['Torta chantilly e amarene','Torta nuda ai frutti di bosco','Torta a piani','Mignon assortiti','Pastiera di grano','Box biscotti secchi','Panettone artigianale','Colomba artigianale','Crostata'];
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function iso(d){const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,10)}
+function addDays(n){const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()+n);return iso(d)}
+function dateOf(s){return new Date(s+'T12:00:00')}
+function isMonday(s){return dateOf(s).getDay()===1}
+function nextOpen(n){let s=addDays(n),i=n;while(isMonday(s)){i++;s=addDays(i)}return s}
+function rel(s){return s===addDays(0)?'Oggi':s===addDays(1)?'Domani':''}
+function big(s){const d=dateOf(s);return GG[d.getDay()]+' '+d.getDate()}
+function longDate(s){const d=dateOf(s);const r=rel(s);return (r?r+', ':'')+GG[d.getDay()].toLowerCase()+' '+d.getDate()+' '+MESI[d.getMonth()]}
+const eur=n=>(Number(n)||0).toLocaleString('it-IT',{minimumFractionDigits:0,maximumFractionDigits:2})+' €';
+const uid=()=>Math.random().toString(36).slice(2,10);
+
+function seed(){
+  const o=(d,ora,cliente,tel,tipo,prodotto,qty,extra)=>Object.assign({id:uid(),ritiro:nextOpen(d),ora,cliente,tel,tipo,prodotto,qty,scritta:'',allergeni:'',totale:0,acconto:0,note:'',stato:'confermato'},extra||{});
+  return [
+    o(0,'11:00','Studio Legale Ferraro','3391234567','Aziendale','Mignon assortiti',60,{totale:90,acconto:90,stato:'ritirato'}),
+    o(0,'17:30','Maria Rossi','3331112233','Su misura','Torta chantilly e amarene',1,{scritta:'Buon compleanno Giulia',allergeni:'No frutta a guscio',totale:55,acconto:20,stato:'pronto',note:'12 persone, decorazione nera e oro'}),
+    o(1,'10:00','Luca Esposito','3471239876','Su misura','Torta nuda ai frutti di bosco',1,{totale:48,acconto:0,stato:'produzione',note:'10 persone'}),
+    o(2,'09:30','Famiglia D\u2019Amato','3289988776','Cerimonia','Torta a piani',1,{scritta:'Prima Comunione Francesco',totale:220,acconto:100,note:'3 piani, 40 persone, bianco e argento'}),
+    o(2,'09:30','Famiglia D\u2019Amato','3289988776','Cerimonia','Mignon assortiti',120,{totale:180,acconto:80}),
+    o(3,'12:00','Anna Caputo','3405566778','Su misura','Pastiera di grano',2,{totale:50,acconto:0}),
+    o(5,'16:00','Tecnoplast Srl','0815551234','Aziendale','Box biscotti secchi',25,{totale:375,acconto:150,note:'Nastro con logo aziendale, fattura a fine mese'})
+  ];
+}
+let orders;
+function load(){try{const r=localStorage.getItem(KEY);if(r)return JSON.parse(r)}catch(e){}return seed()}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(orders))}catch(e){}}
+orders=load();save();
+
+let filter='todo', prodDay=nextOpen(0), newDay=nextOpen(1), newTipo='Su misura';
+
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('on'),1800)}
+const byWhen=(a,b)=>(a.ritiro+a.ora).localeCompare(b.ritiro+b.ora);
+
+/* AGENDA */
+function renderAgenda(){
+  const today=addDays(0);
+  const list=orders.filter(o=>filter==='all'?(o.ritiro>=today||o.stato!=='ritirato'):o.stato!=='ritirato').sort(byWhen);
+  const el=$('#agenda');
+  if(!list.length){el.innerHTML='<div class="empty"><b>Nessun ordine da consegnare</b>Aggiungine uno con + Nuovo.</div>';return}
+  const groups={};list.forEach(o=>(groups[o.ritiro]=groups[o.ritiro]||[]).push(o));
+  el.innerHTML=Object.keys(groups).sort().map(d=>{
+    const g=groups[d];const open=g.filter(o=>o.stato!=='ritirato').length;
+    const late=d<today;
+    const head=late?'In ritardo':(rel(d)||MESI[dateOf(d).getMonth()]);
+    return `<div class="day"><div class="dayhead"><h2>${big(d)}</h2><p>${head}<br>${g.length} ${g.length===1?'ordine':'ordini'}${open!==g.length?`, ${open} da consegnare`:''}</p></div>`+
+    g.map(o=>{const saldo=(+o.totale||0)-(+o.acconto||0);
+      return `<button class="ord ${o.stato==='ritirato'?'done':''}" data-id="${o.id}"><span class="t">${esc(o.ora)}</span><span class="m"><b>${esc(o.cliente)}</b><span>${o.qty} × ${esc(o.prodotto)}</span>${saldo>0&&o.stato!=='ritirato'?`<span class="due">Da incassare ${eur(saldo)}</span>`:''}</span><span class="st s-${o.stato}">${LBL[o.stato]}</span></button>`}).join('')+'</div>';
+  }).join('');
+}
+
+/* PRODUZIONE */
+function renderProd(){
+  const days=[];for(let i=0;i<8;i++)days.push(addDays(i));
+  $('#prodDays').innerHTML=days.map(d=>`<button class="chip" data-pday="${d}" aria-pressed="${d===prodDay}" ${isMonday(d)?'disabled':''}>${rel(d)||big(d)}</button>`).join('');
+  const list=orders.filter(o=>o.ritiro===prodDay&&o.stato!=='ritirato').sort(byWhen);
+  const el=$('#prod');
+  if(!list.length){el.innerHTML=`<div class="empty"><b>Niente da preparare per ${esc(longDate(prodDay))}</b>Gli ordini con ritiro in questo giorno compariranno qui.</div>`;return}
+  const agg={};list.forEach(o=>{agg[o.prodotto]=agg[o.prodotto]||{q:0,n:0};agg[o.prodotto].q+=+o.qty||0;agg[o.prodotto].n++});
+  const rows=Object.entries(agg).sort((a,b)=>b[1].q-a[1].q).map(([p,v])=>`<div class="prow"><span class="q">${v.q}</span><span class="n">${esc(p)}</span><span class="c">${v.n} ${v.n===1?'ordine':'ordini'}</span></div>`).join('');
+  const labs=list.filter(o=>o.scritta||o.allergeni||o.note).map(o=>`<div class="lab"><b>${esc(o.ora)}, ${esc(o.prodotto)} per ${esc(o.cliente)}</b>${o.scritta?`<div class="scritta">Scritta: “${esc(o.scritta)}”</div>`:''}${o.allergeni?`<div class="all">Allergeni: ${esc(o.allergeni)}</div>`:''}${o.note?`<div class="note">${esc(o.note)}</div>`:''}</div>`).join('');
+  el.innerHTML=`<div class="prod-list">${rows}</div>${labs?`<h3>Indicazioni per il laboratorio</h3>${labs}`:''}`;
+}
+
+/* NUOVO */
+function renderForm(){
+  const days=[];for(let i=0;i<8;i++)days.push(addDays(i));
+  $('#giorni').innerHTML=days.map(d=>`<button type="button" class="chip" data-nday="${d}" aria-pressed="${d===newDay}" ${isMonday(d)?'disabled':''}>${rel(d)||big(d)}</button>`).join('');
+  $('#data').value=newDay;$('#data').min=addDays(0);
+  $('#tipi').innerHTML=TIPI.map(t=>`<button type="button" class="chip" data-tipo="${t}" aria-pressed="${t===newTipo}">${t}</button>`).join('');
+}
+$('#prodotti').innerHTML=PRODOTTI.map(p=>`<option value="${esc(p)}">`).join('');
+
+/* SHEET */
+function waNumber(t){let d=String(t).replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);if(!d.startsWith('39'))d='39'+d;return d}
+function waText(o){
+  const nome=o.cliente.split(' ')[0];
+  if(o.stato==='pronto')return `Ciao ${nome}, il tuo ordine (${o.qty} × ${o.prodotto}) è pronto. Ti aspettiamo in Via Calvanese 104. DEPA`;
+  const saldo=(+o.totale||0)-(+o.acconto||0);
+  return `Ciao ${nome}, confermiamo il tuo ordine: ${o.qty} × ${o.prodotto}, ritiro ${longDate(o.ritiro)} alle ${o.ora}.`+(o.scritta?` Scritta: "${o.scritta}".`:'')+(o.totale?` Totale ${eur(o.totale)}${o.acconto?`, acconto ricevuto ${eur(o.acconto)}, saldo al ritiro ${eur(saldo)}`:''}.`:'')+' A presto, DEPA';
+}
+function openSheet(id){
+  const o=orders.find(x=>x.id===id);if(!o)return;
+  const saldo=(+o.totale||0)-(+o.acconto||0);
+  $('#sheetBody').innerHTML=`
+    <h2>${esc(o.cliente)}</h2>
+    <div class="sub">${esc(o.tipo)}, ritiro ${esc(longDate(o.ritiro))} alle ${esc(o.ora)}</div>
+    <dl class="kv">
+      <dt>Ordine</dt><dd>${o.qty} × ${esc(o.prodotto)}</dd>
+      ${o.scritta?`<dt>Scritta</dt><dd>“${esc(o.scritta)}”</dd>`:''}
+      ${o.allergeni?`<dt>Allergeni</dt><dd class="warn">${esc(o.allergeni)}</dd>`:''}
+      ${o.note?`<dt>Note</dt><dd>${esc(o.note)}</dd>`:''}
+      <dt>Totale</dt><dd>${o.totale?eur(o.totale):'Da definire'}</dd>
+      <dt>Acconto</dt><dd>${eur(o.acconto)}</dd>
+      ${o.totale?`<dt>Saldo</dt><dd class="${saldo>0?'warn':''}">${saldo>0?eur(saldo):'Saldato'}</dd>`:''}
+      <dt>Telefono</dt><dd>${esc(o.tel)}</dd>
+    </dl>
+    <div class="flow" role="group" aria-label="Stato">${FLOW.map(([k,l])=>`<button data-stato="${k}" aria-pressed="${o.stato===k}">${l}</button>`).join('')}</div>
+    <div class="acts">
+      <a class="wa" target="_blank" rel="noopener" href="https://wa.me/${waNumber(o.tel)}?text=${encodeURIComponent(waText(o))}">${o.stato==='pronto'?'Avvisa su WhatsApp che è pronto':'Invia conferma su WhatsApp'}</a>
+      <a href="tel:${esc(o.tel.replace(/\s/g,''))}">Chiama</a>
+      <button class="del" data-del>Elimina</button>
+    </div>`;
+  $('#sheetBody').dataset.id=id;
+  const d=$('#sheet');if(!d.open)d.showModal();
+}
+$('#sheet').addEventListener('click',e=>{
+  if(e.target===e.currentTarget){e.currentTarget.close();return}
+  const id=$('#sheetBody').dataset.id;const o=orders.find(x=>x.id===id);if(!o)return;
+  const s=e.target.closest('[data-stato]');
+  if(s){o.stato=s.dataset.stato;save();renderAll();openSheet(id);toast('Stato: '+LBL[o.stato]);return}
+  if(e.target.closest('[data-del]')){if(confirm('Eliminare l\u2019ordine di '+o.cliente+'?')){orders=orders.filter(x=>x.id!==id);save();$('#sheet').close();renderAll();toast('Ordine eliminato')}}
+});
+
+/* EVENTS */
+document.addEventListener('click',e=>{
+  const v=e.target.closest('nav [data-view]');if(v){show(v.dataset.view);return}
+  const f=e.target.closest('[data-filter]');if(f){filter=f.dataset.filter;document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',b===f));renderAgenda();return}
+  const r=e.target.closest('.ord');if(r){openSheet(r.dataset.id);return}
+  const p=e.target.closest('[data-pday]');if(p){prodDay=p.dataset.pday;renderProd();return}
+  const n=e.target.closest('[data-nday]');if(n){newDay=n.dataset.nday;renderForm();return}
+  const t=e.target.closest('[data-tipo]');if(t){newTipo=t.dataset.tipo;renderForm();return}
+});
+$('#data').addEventListener('change',e=>{const v=e.target.value;if(!v)return;if(isMonday(v)){toast('Il lunedì siamo chiusi');e.target.value=newDay;return}newDay=v;renderForm()});
+$('#reset').addEventListener('click',()=>{if(confirm('Sostituire tutti gli ordini con i dati di esempio?')){orders=seed();save();renderAll();toast('Dati di esempio ripristinati')}});
+$('#form').addEventListener('submit',e=>{
+  e.preventDefault();
+  const g=id=>$('#'+id).value.trim();
+  const o={id:uid(),cliente:g('cliente'),tel:g('tel'),tipo:newTipo,prodotto:g('prodotto'),qty:Math.max(1,parseInt(g('qty'))||1),ritiro:newDay,ora:g('ora')||'17:00',scritta:g('scritta'),allergeni:g('allergeni'),totale:parseFloat(g('totale'))||0,acconto:parseFloat(g('acconto'))||0,note:g('note'),stato:'confermato'};
+  orders.push(o);save();e.target.reset();$('#qty').value=1;$('#ora').value='17:00';
+  renderAll();show('agenda');toast('Ordine salvato');
+  setTimeout(()=>openSheet(o.id),250);
+});
+
+/* COMANDE */
+const GFULL=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
+function fullDate(s){const d=dateOf(s);return GFULL[d.getDay()]+' '+d.getDate()+' '+MESI[d.getMonth()]}
+function renderPrint(mode){
+  const days=[];
+  for(let i=0;i<(mode==='week'?7:1);i++){const d=dateOf(prodDay);d.setDate(d.getDate()+i);days.push(iso(d))}
+  const pages=days.filter(d=>!isMonday(d)).map(d=>({d,list:orders.filter(o=>o.ritiro===d&&o.stato!=='ritirato').sort(byWhen)})).filter(p=>p.list.length);
+  const now=new Date();const stamp='Stampato il '+now.getDate()+' '+MESI[now.getMonth()]+' alle '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  if(!pages.length){$('#psheet').innerHTML=`<div class="empty" style="color:#555"><b style="color:#000">Nessuna comanda da stampare</b>Non ci sono ordini da preparare ${mode==='week'?'nei 7 giorni da '+esc(fullDate(prodDay)).toLowerCase():'per '+esc(fullDate(prodDay)).toLowerCase()}.</div>`;return}
+  $('#psheet').innerHTML=pages.map(({d,list})=>{
+    const agg={};list.forEach(o=>{agg[o.prodotto]=(agg[o.prodotto]||0)+(+o.qty||0)});
+    const sum=Object.entries(agg).sort((a,b)=>b[1]-a[1]).map(([p,q])=>`<span><b>${q}</b>${esc(p)}</span>`).join('');
+    const cards=list.map(o=>{const saldo=(+o.totale||0)-(+o.acconto||0);
+      return `<div class="cmd">
+        <div class="top"><span class="ora">${esc(o.ora)}</span><span class="cli">${esc(o.cliente)}<small>${esc(o.tipo)}, tel. ${esc(o.tel)}</small></span></div>
+        <div class="what">${o.qty} × ${esc(o.prodotto)}</div>
+        ${o.scritta?`<div class="scr">Scritta: “${esc(o.scritta)}”</div>`:''}
+        ${o.allergeni?`<div class="all">⚠ Allergeni: ${esc(o.allergeni)}</div>`:''}
+        ${o.note?`<div class="nt">${esc(o.note)}</div>`:''}
+        <div class="foot"><span><i class="box"></i>In produzione</span><span><i class="box"></i>Pronto</span><span><i class="box"></i>Ritirato</span>${saldo>0?`<span>Da incassare ${eur(saldo)}</span>`:''}</div>
+      </div>`}).join('');
+    return `<div class="pday"><h2>${fullDate(d)}</h2><div class="gen">${list.length} ${list.length===1?'comanda':'comande'}. ${stamp}</div><div class="psum">${sum}</div><div class="cards">${cards}</div></div>`;
+  }).join('');
+}
+document.addEventListener('click',e=>{const p=e.target.closest('[data-print]');if(p){renderPrint(p.dataset.print);show('print')}});
+$('#pback').addEventListener('click',()=>show('prod'));
+$('#pgo').addEventListener('click',()=>{try{window.print()}catch(err){toast('Usa Stampa dal menu del browser')}});
+
+function show(v){
+  ['agenda','prod','new','print'].forEach(k=>$('#v-'+k).hidden=k!==v);
+  const cur=v==='print'?'prod':v;
+  document.querySelectorAll('nav [data-view]').forEach(b=>{if(b.dataset.view===cur)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
+  window.scrollTo(0,0);
+}
+function renderAll(){renderAgenda();renderProd();renderForm()}
+const td=new Date();$('#today').innerHTML=GG[td.getDay()]+' '+td.getDate()+'<br>'+MESI[td.getMonth()];
+renderAll();
+})();
+</script>
+</body>
+</html>
