@@ -168,10 +168,23 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 </style>
 </head>
 <body>
+<section id="v-login">
+  <div class="wrap" style="max-width:360px;padding-top:15vh">
+    <div class="brand" style="margin-bottom:28px">DEPA<small>Ordini su misura</small></div>
+    <form id="loginForm" autocomplete="on">
+      <div class="f" style="margin-top:0"><label for="loginEmail">Email</label><input id="loginEmail" type="email" required autocomplete="username" inputmode="email"></div>
+      <div class="f"><label for="loginPass">Password</label><input id="loginPass" type="password" required autocomplete="current-password"></div>
+      <button class="primary" type="submit">Accedi</button>
+      <div class="hint" id="loginErr" style="color:var(--warn)" hidden></div>
+    </form>
+  </div>
+</section>
+
+<div id="app" hidden>
 <div class="wrap">
   <header>
     <div class="brand">DEPA<small>Ordini su misura</small></div>
-    <div class="today" id="today"></div>
+    <div class="today"><span id="today"></span><button class="linkbtn" id="logout" style="padding:6px 0 0;font-size:13px">Esci</button></div>
   </header>
 
   <section id="v-agenda">
@@ -180,7 +193,6 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
       <button class="chip" data-filter="all" aria-pressed="false">Tutti</button>
     </div>
     <div id="agenda"></div>
-    <button class="linkbtn" id="reset">Ripristina dati di esempio</button>
   </section>
 
   <section id="v-prod" hidden>
@@ -236,13 +248,18 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
   <button data-view="prod">Produzione</button>
   <button data-view="new" class="new"><span>+ Nuovo</span></button>
 </div></nav>
+</div>
 
 <dialog id="sheet"><div class="sheet" id="sheetBody"></div></dialog>
 <div class="toast" id="toast" role="status"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 (function(){
-const KEY='depa-ordini-v1';
+const SUPABASE_URL='https://yqjiijsjqlaqkidhhzgd.supabase.co';
+const SUPABASE_KEY='sb_publishable_QUWD6sMst4ri2C2Wody0Sg_UGk3ciQo';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
 const GG=['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
 const MESI=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
 const FLOW=[['confermato','Confermato'],['produzione','In produzione'],['pronto','Pronto'],['ritirato','Ritirato']];
@@ -261,24 +278,27 @@ function rel(s){return s===addDays(0)?'Oggi':s===addDays(1)?'Domani':''}
 function big(s){const d=dateOf(s);return GG[d.getDay()]+' '+d.getDate()}
 function longDate(s){const d=dateOf(s);const r=rel(s);return (r?r+', ':'')+GG[d.getDay()].toLowerCase()+' '+d.getDate()+' '+MESI[d.getMonth()]}
 const eur=n=>(Number(n)||0).toLocaleString('it-IT',{minimumFractionDigits:0,maximumFractionDigits:2})+' €';
-const uid=()=>Math.random().toString(36).slice(2,10);
+let orders=[];
+let channel=null;
 
-function seed(){
-  const o=(d,ora,cliente,tel,tipo,prodotto,qty,extra)=>Object.assign({id:uid(),ritiro:nextOpen(d),ora,cliente,tel,tipo,prodotto,qty,scritta:'',allergeni:'',totale:0,acconto:0,note:'',stato:'confermato'},extra||{});
-  return [
-    o(0,'11:00','Studio Legale Ferraro','3391234567','Aziendale','Mignon assortiti',60,{totale:90,acconto:90,stato:'ritirato'}),
-    o(0,'17:30','Maria Rossi','3331112233','Su misura','Torta chantilly e amarene',1,{scritta:'Buon compleanno Giulia',allergeni:'No frutta a guscio',totale:55,acconto:20,stato:'pronto',note:'12 persone, decorazione nera e oro'}),
-    o(1,'10:00','Luca Esposito','3471239876','Su misura','Torta nuda ai frutti di bosco',1,{totale:48,acconto:0,stato:'produzione',note:'10 persone'}),
-    o(2,'09:30','Famiglia D\u2019Amato','3289988776','Cerimonia','Torta a piani',1,{scritta:'Prima Comunione Francesco',totale:220,acconto:100,note:'3 piani, 40 persone, bianco e argento'}),
-    o(2,'09:30','Famiglia D\u2019Amato','3289988776','Cerimonia','Mignon assortiti',120,{totale:180,acconto:80}),
-    o(3,'12:00','Anna Caputo','3405566778','Su misura','Pastiera di grano',2,{totale:50,acconto:0}),
-    o(5,'16:00','Tecnoplast Srl','0815551234','Aziendale','Box biscotti secchi',25,{totale:375,acconto:150,note:'Nastro con logo aziendale, fattura a fine mese'})
-  ];
+async function loadOrders(){
+  const {data,error}=await sb.from('ordini').select('*').order('ritiro').order('ora');
+  if(error){toast('Errore caricamento ordini');console.error(error);return}
+  orders=data;
 }
-let orders;
-function load(){try{const r=localStorage.getItem(KEY);if(r)return JSON.parse(r)}catch(e){}return seed()}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(orders))}catch(e){}}
-orders=load();save();
+function upsertLocal(o){
+  const i=orders.findIndex(x=>x.id===o.id);
+  if(i>-1)orders[i]=o;else orders.push(o);
+}
+function subscribeRealtime(){
+  if(channel)return;
+  channel=sb.channel('ordini-changes').on('postgres_changes',{event:'*',schema:'public',table:'ordini'},payload=>{
+    if(payload.eventType==='DELETE'){orders=orders.filter(o=>o.id!==payload.old.id)}
+    else{upsertLocal(payload.new)}
+    renderAll();
+  }).subscribe();
+}
+function unsubscribeRealtime(){if(channel){sb.removeChannel(channel);channel=null}}
 
 let filter='todo', prodDay=nextOpen(0), newDay=nextOpen(1), newTipo='Su misura';
 
@@ -357,12 +377,23 @@ function openSheet(id){
   $('#sheetBody').dataset.id=id;
   const d=$('#sheet');if(!d.open)d.showModal();
 }
-$('#sheet').addEventListener('click',e=>{
+$('#sheet').addEventListener('click',async e=>{
   if(e.target===e.currentTarget){e.currentTarget.close();return}
   const id=$('#sheetBody').dataset.id;const o=orders.find(x=>x.id===id);if(!o)return;
   const s=e.target.closest('[data-stato]');
-  if(s){o.stato=s.dataset.stato;save();renderAll();openSheet(id);toast('Stato: '+LBL[o.stato]);return}
-  if(e.target.closest('[data-del]')){if(confirm('Eliminare l\u2019ordine di '+o.cliente+'?')){orders=orders.filter(x=>x.id!==id);save();$('#sheet').close();renderAll();toast('Ordine eliminato')}}
+  if(s){
+    const stato=s.dataset.stato;
+    const {data,error}=await sb.from('ordini').update({stato}).eq('id',id).select().single();
+    if(error){toast('Errore aggiornamento');console.error(error);return}
+    upsertLocal(data);renderAll();openSheet(id);toast('Stato: '+LBL[stato]);
+    return;
+  }
+  if(e.target.closest('[data-del]')){
+    if(!confirm('Eliminare l’ordine di '+o.cliente+'?'))return;
+    const {error}=await sb.from('ordini').delete().eq('id',id);
+    if(error){toast('Errore eliminazione');console.error(error);return}
+    orders=orders.filter(x=>x.id!==id);$('#sheet').close();renderAll();toast('Ordine eliminato');
+  }
 });
 
 /* EVENTS */
@@ -375,14 +406,15 @@ document.addEventListener('click',e=>{
   const t=e.target.closest('[data-tipo]');if(t){newTipo=t.dataset.tipo;renderForm();return}
 });
 $('#data').addEventListener('change',e=>{const v=e.target.value;if(!v)return;if(isMonday(v)){toast('Il lunedì siamo chiusi');e.target.value=newDay;return}newDay=v;renderForm()});
-$('#reset').addEventListener('click',()=>{if(confirm('Sostituire tutti gli ordini con i dati di esempio?')){orders=seed();save();renderAll();toast('Dati di esempio ripristinati')}});
-$('#form').addEventListener('submit',e=>{
+$('#form').addEventListener('submit',async e=>{
   e.preventDefault();
   const g=id=>$('#'+id).value.trim();
-  const o={id:uid(),cliente:g('cliente'),tel:g('tel'),tipo:newTipo,prodotto:g('prodotto'),qty:Math.max(1,parseInt(g('qty'))||1),ritiro:newDay,ora:g('ora')||'17:00',scritta:g('scritta'),allergeni:g('allergeni'),totale:parseFloat(g('totale'))||0,acconto:parseFloat(g('acconto'))||0,note:g('note'),stato:'confermato'};
-  orders.push(o);save();e.target.reset();$('#qty').value=1;$('#ora').value='17:00';
+  const payload={cliente:g('cliente'),tel:g('tel'),tipo:newTipo,prodotto:g('prodotto'),qty:Math.max(1,parseInt(g('qty'))||1),ritiro:newDay,ora:g('ora')||'17:00',scritta:g('scritta'),allergeni:g('allergeni'),totale:parseFloat(g('totale'))||0,acconto:parseFloat(g('acconto'))||0,note:g('note'),stato:'confermato'};
+  const {data,error}=await sb.from('ordini').insert([payload]).select().single();
+  if(error){toast('Errore salvataggio');console.error(error);return}
+  upsertLocal(data);e.target.reset();$('#qty').value=1;$('#ora').value='17:00';
   renderAll();show('agenda');toast('Ordine salvato');
-  setTimeout(()=>openSheet(o.id),250);
+  setTimeout(()=>openSheet(data.id),250);
 });
 
 /* COMANDE */
@@ -421,7 +453,34 @@ function show(v){
 }
 function renderAll(){renderAgenda();renderProd();renderForm()}
 const td=new Date();$('#today').innerHTML=GG[td.getDay()]+' '+td.getDate()+'<br>'+MESI[td.getMonth()];
-renderAll();
+
+async function enterApp(){
+  $('#v-login').hidden=true;
+  $('#app').hidden=false;
+  await loadOrders();
+  renderAll();
+  subscribeRealtime();
+}
+function showLogin(){
+  unsubscribeRealtime();
+  $('#app').hidden=true;
+  $('#v-login').hidden=false;
+}
+$('#loginForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const email=$('#loginEmail').value.trim();
+  const password=$('#loginPass').value;
+  const btn=e.target.querySelector('button');btn.disabled=true;
+  const {error}=await sb.auth.signInWithPassword({email,password});
+  btn.disabled=false;
+  const err=$('#loginErr');
+  if(error){err.textContent='Accesso non riuscito. Controlla email e password.';err.hidden=false;return}
+  err.hidden=true;
+});
+$('#logout').addEventListener('click',()=>sb.auth.signOut());
+sb.auth.onAuthStateChange((event,session)=>{
+  if(session)enterApp();else showLogin();
+});
 })();
 </script>
 </body>

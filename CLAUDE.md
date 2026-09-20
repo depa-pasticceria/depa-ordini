@@ -6,8 +6,11 @@ Oggi gli ordini su misura (torte, cerimonie, ordini aziendali, preordini stagion
 Obiettivo: un gestionale ordini usabile sia dal PC del negozio sia dallo smartphone, con dati condivisi tra i dispositivi.
 
 ## Stato attuale
-`depa-ordini.html` è un prototipo funzionante in un singolo file (HTML/CSS/JS vanilla), mobile-first, stile dark/industrial coerente con il brand.
-Limite principale: i dati sono salvati in `localStorage`, quindi restano sul singolo dispositivo.
+`depa-ordini.html` è un'app in un singolo file (HTML/CSS/JS vanilla), mobile-first, stile dark/industrial coerente con il brand.
+Backend: Supabase (Postgres + Auth + Realtime), progetto `depa-ordini` (URL `https://yqjiijsjqlaqkidhhzgd.supabase.co`). Schema in `schema.sql`.
+I dati non sono più in `localStorage`: ogni ordine è su una tabella condivisa `ordini`, protetta da Row Level Security (solo utenti autenticati leggono/scrivono). La sincronizzazione tra PC e telefono è in tempo reale via Supabase Realtime (subscription su `postgres_changes`), non serve ricaricare la pagina.
+Login richiesto (email/password Supabase Auth) prima di poter usare l'app; niente registrazione pubblica, gli account staff si creano manualmente dalla dashboard Supabase.
+La funzione "Ripristina dati di esempio" è stata rimossa: con dati condivisi reali sarebbe distruttiva per tutti i dispositivi collegati.
 
 Funzioni già presenti:
 - Agenda ordini raggruppata per giorno di ritiro, filtro "da consegnare / tutti", importo da incassare in evidenza
@@ -21,12 +24,14 @@ Modello dati di un ordine:
 `id, cliente, tel, tipo (Su misura | Cerimonia | Aziendale | Stagionale), prodotto, qty, ritiro (YYYY-MM-DD), ora (HH:MM), scritta, allergeni, totale, acconto, note, stato`
 
 ## Prossimi passi proposti (da confermare con Mauro)
-1. Backend condiviso con sincronizzazione tra PC e telefono (es. Supabase: Postgres + auth + realtime)
-2. Accesso protetto per lo staff e Row Level Security: i dati contengono nomi e numeri dei clienti (GDPR)
-3. PWA installabile (manifest + service worker), con funzionamento offline di base
-4. Export CSV e backup periodici
-5. Deploy su hosting statico (es. Vercel o Netlify)
-6. Eventuale gestione preordini stagionali con disponibilità massime per prodotto
+1. ~~Backend condiviso con sincronizzazione tra PC e telefono~~ Fatto: Supabase (Postgres + Auth + Realtime)
+2. ~~Accesso protetto per lo staff e Row Level Security~~ Fatto: login obbligatorio + RLS, account creati manualmente su Supabase
+3. Creare gli account staff su Supabase Auth (Authentication → Users) e disabilitare le registrazioni pubbliche (Authentication → Providers → Email)
+4. Testare la sincronizzazione reale tra due dispositivi (inserire da telefono, verificare comparsa immediata su PC)
+5. PWA installabile (manifest + service worker), con funzionamento offline di base
+6. Export CSV e backup periodici
+7. Deploy su hosting statico (es. Vercel o Netlify)
+8. Eventuale gestione preordini stagionali con disponibilità massime per prodotto
 
 ## Vincoli
 - L'inserimento di un ordine da telefono deve restare sotto i 30 secondi, altrimenti lo staff torna al quaderno
