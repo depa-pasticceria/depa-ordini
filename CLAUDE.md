@@ -6,7 +6,7 @@ Oggi gli ordini su misura (torte, cerimonie, ordini aziendali, preordini stagion
 Obiettivo: un gestionale ordini usabile sia dal PC del negozio sia dallo smartphone, con dati condivisi tra i dispositivi.
 
 ## Stato attuale
-`depa-ordini.html` è un'app in un singolo file (HTML/CSS/JS vanilla), mobile-first, stile dark/industrial coerente con il brand.
+`index.html` è un'app in un singolo file (HTML/CSS/JS vanilla), mobile-first, stile dark/industrial coerente con il brand.
 Backend: Supabase (Postgres + Auth + Realtime), progetto `depa-ordini` (URL `https://yqjiijsjqlaqkidhhzgd.supabase.co`). Schema in `schema.sql`.
 I dati non sono più in `localStorage`: ogni ordine è su una tabella condivisa `ordini`, protetta da Row Level Security (solo utenti autenticati leggono/scrivono). La sincronizzazione tra PC e telefono è in tempo reale via Supabase Realtime (subscription su `postgres_changes`), non serve ricaricare la pagina.
 Login richiesto (email/password Supabase Auth) prima di poter usare l'app; niente registrazione pubblica, gli account staff si creano manualmente dalla dashboard Supabase.
@@ -27,10 +27,10 @@ Modello dati di un ordine:
 1. ~~Backend condiviso con sincronizzazione tra PC e telefono~~ Fatto: Supabase (Postgres + Auth + Realtime)
 2. ~~Accesso protetto per lo staff e Row Level Security~~ Fatto: login obbligatorio + RLS, account creati manualmente su Supabase
 3. Creare gli account staff su Supabase Auth (Authentication → Users) e disabilitare le registrazioni pubbliche (Authentication → Providers → Email)
-4. Testare la sincronizzazione reale tra due dispositivi (inserire da telefono, verificare comparsa immediata su PC)
+4. ~~Testare la sincronizzazione reale tra due dispositivi~~ Fatto: confermato funzionante da Mauro
 5. PWA installabile (manifest + service worker), con funzionamento offline di base
 6. Export CSV e backup periodici
-7. Deploy su hosting statico (es. Vercel o Netlify)
+7. Deploy su hosting statico: in corso (GitHub org `depa-pasticceria` pronta, repo pushato, prossimo step Vercel)
 8. Eventuale gestione preordini stagionali con disponibilità massime per prodotto
 
 ## Vincoli
