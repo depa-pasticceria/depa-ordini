@@ -35,8 +35,11 @@ button,input,select,textarea{font:inherit;color:inherit}
 
 /* Header */
 header{display:flex;align-items:flex-end;justify-content:space-between;padding:18px 0 14px;border-bottom:3px solid var(--ink)}
-.brand{font-weight:900;font-stretch:125%;font-size:34px;letter-spacing:-.01em;line-height:.9}
-.brand small{display:block;font-weight:500;font-stretch:100%;font-size:14px;color:var(--muted);letter-spacing:0;margin-top:6px}
+.brand{line-height:.9}
+.brand .logo{display:block;height:26px;width:auto}
+.brand small{display:block;font-weight:500;font-stretch:100%;font-size:14px;color:var(--muted);letter-spacing:0;margin-top:8px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .logo{filter:invert(1)}}
+:root[data-theme="dark"] .logo{filter:invert(1)}
 .today{text-align:right;font-size:14px;color:var(--muted)}
 
 /* Filters / chips */
@@ -170,7 +173,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 <body>
 <section id="v-login">
   <div class="wrap" style="max-width:360px;padding-top:15vh">
-    <div class="brand" style="margin-bottom:28px">DEPA<small>Ordini su misura</small></div>
+    <div class="brand" style="margin-bottom:28px"><img class="logo" src="logo.png" alt="DEPA" style="height:32px"><small>Ordini su misura</small></div>
     <form id="loginForm" autocomplete="on">
       <div class="f" style="margin-top:0"><label for="loginEmail">Email</label><input id="loginEmail" type="email" required autocomplete="username" inputmode="email"></div>
       <div class="f"><label for="loginPass">Password</label><input id="loginPass" type="password" required autocomplete="current-password"></div>
@@ -183,7 +186,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 <div id="app" hidden>
 <div class="wrap">
   <header>
-    <div class="brand">DEPA<small>Ordini su misura</small></div>
+    <div class="brand"><img class="logo" src="logo.png" alt="DEPA"><small>Ordini su misura</small></div>
     <div class="today"><span id="today"></span><button class="linkbtn" id="logout" style="padding:6px 0 0;font-size:13px">Esci</button></div>
   </header>
 
