@@ -48,7 +48,7 @@ header{display:flex;align-items:flex-end;justify-content:space-between;padding:1
 .brand small{display:block;font-weight:500;font-stretch:100%;font-size:14px;color:var(--muted);letter-spacing:0;margin-top:8px}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .logo{filter:invert(1)}}
 :root[data-theme="dark"] .logo{filter:invert(1)}
-.today{text-align:right;font-size:14px;color:var(--muted)}
+.today{display:flex;flex-direction:column;align-items:flex-end;gap:8px;text-align:right;font-size:14px;color:var(--muted)}
 
 /* Filters / chips */
 .chips{display:flex;gap:8px;overflow-x:auto;padding:14px 0 4px;scrollbar-width:none}
@@ -181,7 +181,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 <body>
 <section id="v-login">
   <div class="wrap" style="max-width:360px;padding-top:15vh">
-    <div class="brand" style="margin-bottom:28px"><img class="logo" src="logo.png" alt="DEPA" style="height:32px"><small>Ordini su misura</small></div>
+    <div class="brand" style="margin-bottom:28px"><img class="logo" src="logo.png" alt="DEPA" style="height:32px"><small>Gestione ordini</small></div>
     <form id="loginForm" autocomplete="on">
       <div class="f" style="margin-top:0"><label for="loginEmail">Email</label><input id="loginEmail" type="email" required autocomplete="username" inputmode="email"></div>
       <div class="f"><label for="loginPass">Password</label><input id="loginPass" type="password" required autocomplete="current-password"></div>
@@ -194,8 +194,8 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 <div id="app" hidden>
 <div class="wrap">
   <header>
-    <div class="brand"><img class="logo" src="logo.png" alt="DEPA"><small>Ordini su misura</small></div>
-    <div class="today"><span id="today"></span><button class="linkbtn" id="logout" style="padding:6px 0 0;font-size:13px">Esci</button></div>
+    <div class="brand"><img class="logo" src="logo.png" alt="DEPA"><small>Gestione ordini</small></div>
+    <div class="today"><span id="today"></span><button class="linkbtn" id="logout" style="padding:0;font-size:13px">Esci</button></div>
   </header>
 
   <section id="v-agenda">
