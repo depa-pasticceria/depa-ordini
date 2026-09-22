@@ -130,10 +130,10 @@ form{margin-top:10px}
 /* Bottom nav */
 nav{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
 nav .in{max-width:720px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr 1fr}
-nav button{background:none;border:0;padding:14px 4px;font-weight:700;font-size:15px;color:var(--muted);cursor:pointer;border-top:3px solid transparent;margin-top:-1px}
+nav button{background:none;border:0;padding:12px 2px;font-weight:700;font-size:13px;color:var(--muted);cursor:pointer;border-top:3px solid transparent;margin-top:-1px;white-space:nowrap}
 nav button[aria-current="page"]{color:var(--ink);border-top-color:var(--ink)}
 nav button.new{color:var(--ink)}
-nav button.new span{background:var(--crema);color:var(--on-crema);padding:6px 14px;border-radius:999px}
+nav button.new span{display:inline-block;background:var(--crema);color:var(--on-crema);padding:6px 10px;border-radius:999px;white-space:nowrap}
 
 /* Sheet */
 dialog{border:0;padding:0;margin:auto auto 0;width:100%;max-width:720px;max-height:90%;background:var(--bg);color:var(--ink);border-radius:14px 14px 0 0;border-top:3px solid var(--ink)}
@@ -145,8 +145,8 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 .kv dt{color:var(--muted)}
 .kv dd{margin:0;font-weight:600}
 .kv .warn{color:var(--warn)}
-.flow{display:flex;gap:6px;margin-top:20px}
-.flow button{flex:1;padding:10px 4px;font-size:13px;font-weight:700;border:1.5px solid var(--line);background:none;border-radius:4px;cursor:pointer}
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:6px;margin-top:20px}
+.flow button{padding:10px 4px;font-size:13px;font-weight:700;border:1.5px solid var(--line);background:none;border-radius:4px;cursor:pointer}
 .flow button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
 .acts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
 .acts a,.acts button{display:block;text-align:center;padding:14px;border-radius:6px;font-weight:700;text-decoration:none;cursor:pointer;border:1.5px solid var(--ink);background:none}
@@ -315,7 +315,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 const GG=['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
 const MESI=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
-const FLOW=[['confermato','Confermato'],['produzione','In produzione'],['pronto','Pronto'],['ritirato','Ritirato'],['consegnato','Consegnato']];
+const FLOW=[['confermato','Confermato'],['produzione','Produzione'],['pronto','Pronto'],['ritirato','Ritirato'],['consegnato','Consegnato']];
 const LBL=Object.fromEntries(FLOW);
 const isClosed=o=>o.stato==='ritirato'||o.stato==='consegnato';
 const TIPI=['Su misura','Cerimonia','Aziendale','Stagionale'];
@@ -511,6 +511,7 @@ $('#sheet').addEventListener('click',async e=>{
   const s=e.target.closest('[data-stato]');
   if(s){
     const stato=s.dataset.stato;
+    if((stato==='ritirato'||stato==='consegnato')&&o.stato!==stato&&!confirm(`Segnare l’ordine di ${o.cliente} come ${LBL[stato].toLowerCase()}?`))return;
     const {data,error}=await sb.from('ordini').update({stato}).eq('id',id).select().single();
     if(error){toast('Errore aggiornamento');console.error(error);return}
     upsertLocal(data);renderAll();openSheet(id);toast('Stato: '+LBL[stato]);
