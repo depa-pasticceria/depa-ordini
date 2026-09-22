@@ -23,7 +23,9 @@ Funzioni già presenti:
 - Sezione "Altro" in nav: Rubrica clienti (ricavata dagli ordini, raggruppata per telefono, con ricerca e scheda cliente) e Storico ordini (ultimi 12 mesi con barra comparativa ordini/mese, per individuare i periodi di picco/calo, e lista ordini del mese selezionato)
 
 Modello dati di un ordine:
-`id, cliente, tel, tipo (Su misura | Cerimonia | Aziendale | Stagionale), prodotto, qty, ritiro (YYYY-MM-DD), ora (HH:MM), scritta, allergeni, totale, acconto, note, stato`
+`id, cliente, tel, tipo (Su misura | Cerimonia | Aziendale | Stagionale), modalita (ritiro | consegna), prodotto, qty, ritiro (YYYY-MM-DD), ora (HH:MM), scritta, allergeni, totale, acconto, note, stato`
+
+Colonna `modalita` aggiunta il 2026-09-22 (migrazione in `schema.sql`, da eseguire manualmente su Supabase se non ancora fatto). Scelta alla creazione dell'ordine (chip Ritiro/Consegna, default ritiro); si riflette nel messaggio WhatsApp, nella scheda ordine e nella comanda stampabile ("Da ritirare"/"Da consegnare" accanto all'orario).
 
 ## Prossimi passi proposti (da confermare con Mauro)
 1. ~~Backend condiviso con sincronizzazione tra PC e telefono~~ Fatto: Supabase (Postgres + Auth + Realtime)
