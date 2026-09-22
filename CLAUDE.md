@@ -14,11 +14,13 @@ La funzione "Ripristina dati di esempio" è stata rimossa: con dati condivisi re
 
 Funzioni già presenti:
 - Agenda ordini raggruppata per giorno di ritiro, filtro "da consegnare / tutti", importo da incassare in evidenza
-- Stati: confermato → in produzione → pronto → ritirato
+- Stati: confermato → in produzione → pronto → ritirato / consegnato (due stati finali: ritiro in negozio o consegna diretta al cliente)
 - Vista Produzione: quantità aggregate per prodotto per giorno + indicazioni per il laboratorio (scritte, allergeni, note)
 - Inserimento rapido da telefono (giorni a tocco, lunedì disabilitato, prodotti suggeriti)
 - Scheda ordine con chiamata e messaggio WhatsApp precompilato (wa.me), testo diverso quando l'ordine è pronto
 - Comande stampabili A4 per giorno o per settimana (un giorno per foglio), ottimizzate per stampa in bianco e nero, da appendere in bacheca produzione
+- Installabile come PWA su smartphone e PC (manifest + service worker network-first, sempre aggiornato online)
+- Sezione "Altro" in nav: Rubrica clienti (ricavata dagli ordini, raggruppata per telefono, con ricerca e scheda cliente) e Storico ordini (ultimi 12 mesi con barra comparativa ordini/mese, per individuare i periodi di picco/calo, e lista ordini del mese selezionato)
 
 Modello dati di un ordine:
 `id, cliente, tel, tipo (Su misura | Cerimonia | Aziendale | Stagionale), prodotto, qty, ritiro (YYYY-MM-DD), ora (HH:MM), scritta, allergeni, totale, acconto, note, stato`
@@ -28,10 +30,11 @@ Modello dati di un ordine:
 2. ~~Accesso protetto per lo staff e Row Level Security~~ Fatto: login obbligatorio + RLS, account creati manualmente su Supabase
 3. Creare gli account staff su Supabase Auth (Authentication → Users) e disabilitare le registrazioni pubbliche (Authentication → Providers → Email)
 4. ~~Testare la sincronizzazione reale tra due dispositivi~~ Fatto: confermato funzionante da Mauro
-5. PWA installabile (manifest + service worker), con funzionamento offline di base
+5. ~~PWA installabile~~ Fatto: manifest + service worker (network-first, si aggiorna da solo ad ogni apertura online)
 6. Export CSV e backup periodici
-7. Deploy su hosting statico: in corso (GitHub org `depa-pasticceria` pronta, repo pushato, prossimo step Vercel)
+7. ~~Deploy su hosting statico~~ Fatto: live su `depa-ordini.vercel.app` (GitHub org `depa-pasticceria` → Vercel account personale free di `depa.marketing0@gmail.com`)
 8. Eventuale gestione preordini stagionali con disponibilità massime per prodotto
+9. ~~Rubrica clienti e storico/statistiche ordini~~ Fatto: sezione "Altro" con Rubrica clienti e Storico per mese
 
 ## Vincoli
 - L'inserimento di un ordine da telefono deve restare sotto i 30 secondi, altrimenti lo staff torna al quaderno
