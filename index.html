@@ -177,6 +177,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 .cmd{border:2px solid #000;padding:10px 12px;break-inside:avoid;page-break-inside:avoid;font-size:13px}
 .cmd .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border-bottom:1px solid #000;padding-bottom:6px}
 .cmd .ora{font-weight:900;font-stretch:70%;font-size:26px;line-height:1}
+.cmd .ora small{display:block;font-weight:800;font-stretch:100%;font-size:11px;text-transform:uppercase;letter-spacing:.03em;margin-top:3px}
 .cmd .cli{font-weight:700;text-align:right}
 .cmd .cli small{display:block;font-weight:500}
 .cmd .what{font-weight:800;font-size:17px;margin:8px 0 4px}
@@ -257,9 +258,11 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
         <div style="grid-column:1/-1"><label for="prodotto">Prodotto</label><input id="prodotto" list="prodotti" required placeholder="Es. torta chantilly e amarene"></div>
       </div>
       <datalist id="prodotti"></datalist>
+      <div class="f"><span class="lbl">Consegna</span>
+        <div class="chips" id="modalita"></div></div>
       <div class="f row2">
         <div><label for="qty">Quantità</label><input id="qty" type="number" min="1" value="1" inputmode="numeric"></div>
-        <div><label for="ora">Ora ritiro</label><input id="ora" type="time" value="17:00"></div>
+        <div><label for="ora">Orario</label><input id="ora" type="time" value="17:00"></div>
       </div>
       <div class="f"><span class="lbl">Giorno di ritiro</span>
         <div class="chips" id="giorni"></div>
@@ -319,6 +322,7 @@ const FLOW=[['confermato','Confermato'],['produzione','Produzione'],['pronto','P
 const LBL=Object.fromEntries(FLOW);
 const isClosed=o=>o.stato==='ritirato'||o.stato==='consegnato';
 const TIPI=['Su misura','Cerimonia','Aziendale','Stagionale'];
+const MODALITA=[['ritiro','Ritiro'],['consegna','Consegna']];
 const PRODOTTI=['Torta chantilly e amarene','Torta nuda ai frutti di bosco','Torta a piani','Mignon assortiti','Pastiera di grano','Box biscotti secchi','Panettone artigianale','Colomba artigianale','Crostata'];
 
 const $=s=>document.querySelector(s);
@@ -354,7 +358,7 @@ function subscribeRealtime(){
 }
 function unsubscribeRealtime(){if(channel){sb.removeChannel(channel);channel=null}}
 
-let filter='todo', prodDay=nextOpen(0), newDay=nextOpen(1), newTipo='Su misura';
+let filter='todo', prodDay=nextOpen(0), newDay=nextOpen(1), newTipo='Su misura', newModalita='ritiro';
 
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('on'),1800)}
 const byWhen=(a,b)=>(a.ritiro+a.ora).localeCompare(b.ritiro+b.ora);
@@ -398,6 +402,7 @@ function renderForm(){
   $('#giorni').innerHTML=days.map(d=>`<button type="button" class="chip" data-nday="${d}" aria-pressed="${d===newDay}" ${isMonday(d)?'disabled':''}>${rel(d)||big(d)}</button>`).join('');
   $('#data').value=newDay;$('#data').min=addDays(0);
   $('#tipi').innerHTML=TIPI.map(t=>`<button type="button" class="chip" data-tipo="${t}" aria-pressed="${t===newTipo}">${t}</button>`).join('');
+  $('#modalita').innerHTML=MODALITA.map(([k,l])=>`<button type="button" class="chip" data-modalita="${k}" aria-pressed="${k===newModalita}">${l}</button>`).join('');
 }
 $('#prodotti').innerHTML=PRODOTTI.map(p=>`<option value="${esc(p)}">`).join('');
 
@@ -476,16 +481,21 @@ function renderStorico(){
 function waNumber(t){let d=String(t).replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);if(!d.startsWith('39'))d='39'+d;return d}
 function waText(o){
   const nome=o.cliente.split(' ')[0];
-  if(o.stato==='pronto')return `Ciao ${nome}, il tuo ordine (${o.qty} × ${o.prodotto}) è pronto. Ti aspettiamo in Via Calvanese 104. DEPA`;
+  const consegna=o.modalita==='consegna';
+  if(o.stato==='pronto')return consegna
+    ? `Ciao ${nome}, il tuo ordine (${o.qty} × ${o.prodotto}) è pronto, te lo consegniamo a breve. DEPA`
+    : `Ciao ${nome}, il tuo ordine (${o.qty} × ${o.prodotto}) è pronto. Ti aspettiamo in Via Calvanese 104. DEPA`;
   const saldo=(+o.totale||0)-(+o.acconto||0);
-  return `Ciao ${nome}, confermiamo il tuo ordine: ${o.qty} × ${o.prodotto}, ritiro ${longDate(o.ritiro)} alle ${o.ora}.`+(o.scritta?` Scritta: "${o.scritta}".`:'')+(o.totale?` Totale ${eur(o.totale)}${o.acconto?`, acconto ricevuto ${eur(o.acconto)}, saldo al ritiro ${eur(saldo)}`:''}.`:'')+' A presto, DEPA';
+  const modLabel=consegna?'consegna':'ritiro';
+  return `Ciao ${nome}, confermiamo il tuo ordine: ${o.qty} × ${o.prodotto}, ${modLabel} ${longDate(o.ritiro)} alle ${o.ora}.`+(o.scritta?` Scritta: "${o.scritta}".`:'')+(o.totale?` Totale ${eur(o.totale)}${o.acconto?`, acconto ricevuto ${eur(o.acconto)}, saldo al ${modLabel} ${eur(saldo)}`:''}.`:'')+' A presto, DEPA';
 }
 function openSheet(id){
   const o=orders.find(x=>x.id===id);if(!o)return;
   const saldo=(+o.totale||0)-(+o.acconto||0);
+  const modLabel=o.modalita==='consegna'?'consegna':'ritiro';
   $('#sheetBody').innerHTML=`
     <h2>${esc(o.cliente)}</h2>
-    <div class="sub">${esc(o.tipo)}, ritiro ${esc(longDate(o.ritiro))} alle ${esc(o.ora)}</div>
+    <div class="sub">${esc(o.tipo)}, ${modLabel} ${esc(longDate(o.ritiro))} alle ${esc(o.ora)}</div>
     <dl class="kv">
       <dt>Ordine</dt><dd>${o.qty} × ${esc(o.prodotto)}</dd>
       ${o.scritta?`<dt>Scritta</dt><dd>“${esc(o.scritta)}”</dd>`:''}
@@ -533,6 +543,7 @@ document.addEventListener('click',e=>{
   const p=e.target.closest('[data-pday]');if(p){prodDay=p.dataset.pday;renderProd();return}
   const n=e.target.closest('[data-nday]');if(n){newDay=n.dataset.nday;renderForm();return}
   const t=e.target.closest('[data-tipo]');if(t){newTipo=t.dataset.tipo;renderForm();return}
+  const md=e.target.closest('[data-modalita]');if(md){newModalita=md.dataset.modalita;renderForm();return}
   const nv=e.target.closest('[data-nav]');if(nv){const to=nv.dataset.nav;show(to);if(to==='rubrica')renderRubrica();if(to==='storico')renderStorico();return}
   const bk=e.target.closest('[data-back]');if(bk){show(bk.dataset.back);return}
   const c=e.target.closest('.contatto');if(c){openClienteSheet(c.dataset.tel);return}
@@ -542,7 +553,7 @@ $('#data').addEventListener('change',e=>{const v=e.target.value;if(!v)return;if(
 $('#form').addEventListener('submit',async e=>{
   e.preventDefault();
   const g=id=>$('#'+id).value.trim();
-  const payload={cliente:g('cliente'),tel:g('tel'),tipo:newTipo,prodotto:g('prodotto'),qty:Math.max(1,parseInt(g('qty'))||1),ritiro:newDay,ora:g('ora')||'17:00',scritta:g('scritta'),allergeni:g('allergeni'),totale:parseFloat(g('totale'))||0,acconto:parseFloat(g('acconto'))||0,note:g('note'),stato:'confermato'};
+  const payload={cliente:g('cliente'),tel:g('tel'),tipo:newTipo,modalita:newModalita,prodotto:g('prodotto'),qty:Math.max(1,parseInt(g('qty'))||1),ritiro:newDay,ora:g('ora')||'17:00',scritta:g('scritta'),allergeni:g('allergeni'),totale:parseFloat(g('totale'))||0,acconto:parseFloat(g('acconto'))||0,note:g('note'),stato:'confermato'};
   const {data,error}=await sb.from('ordini').insert([payload]).select().single();
   if(error){toast('Errore salvataggio');console.error(error);return}
   upsertLocal(data);e.target.reset();$('#qty').value=1;$('#ora').value='17:00';
@@ -564,7 +575,7 @@ function renderPrint(mode){
     const sum=Object.entries(agg).sort((a,b)=>b[1]-a[1]).map(([p,q])=>`<span><b>${q}</b>${esc(p)}</span>`).join('');
     const cards=list.map(o=>{const saldo=(+o.totale||0)-(+o.acconto||0);
       return `<div class="cmd">
-        <div class="top"><span class="ora">${esc(o.ora)}</span><span class="cli">${esc(o.cliente)}<small>${esc(o.tipo)}, tel. ${esc(o.tel)}</small></span></div>
+        <div class="top"><span class="ora">${esc(o.ora)}<small>${o.modalita==='consegna'?'Da consegnare':'Da ritirare'}</small></span><span class="cli">${esc(o.cliente)}<small>${esc(o.tipo)}, tel. ${esc(o.tel)}</small></span></div>
         <div class="what">${o.qty} × ${esc(o.prodotto)}</div>
         ${o.scritta?`<div class="scr">Scritta: “${esc(o.scritta)}”</div>`:''}
         ${o.allergeni?`<div class="all">⚠ Allergeni: ${esc(o.allergeni)}</div>`:''}

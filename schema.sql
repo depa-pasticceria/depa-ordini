@@ -39,3 +39,7 @@ grant select, insert, update, delete on ordini to authenticated;
 
 -- Abilita gli aggiornamenti realtime sulla tabella (sync tra dispositivi)
 alter publication supabase_realtime add table ordini;
+
+-- Migrazione 2026-09-22: modalità ritiro/consegna scelta alla creazione dell'ordine
+-- Da eseguire una volta sola nel SQL Editor, sugli ordini esistenti imposta 'ritiro' di default.
+alter table ordini add column if not exists modalita text not null default 'ritiro';
