@@ -73,7 +73,7 @@ header{display:flex;align-items:flex-end;justify-content:space-between;padding:1
 .s-confermato{background:transparent}
 .s-produzione{background:var(--crema);color:var(--on-crema);border-color:var(--crema)}
 .s-pronto{background:var(--ink);color:var(--bg)}
-.s-ritirato{border-color:var(--line);color:var(--muted)}
+.s-ritirato,.s-consegnato{border-color:var(--line);color:var(--muted)}
 .ord.done .m b,.ord.done .t{color:var(--muted);text-decoration:line-through}
 .empty{padding:48px 0;color:var(--muted)}
 .empty b{display:block;color:var(--ink);font-size:20px;margin-bottom:6px}
@@ -273,8 +273,9 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 const GG=['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
 const MESI=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
-const FLOW=[['confermato','Confermato'],['produzione','In produzione'],['pronto','Pronto'],['ritirato','Ritirato']];
+const FLOW=[['confermato','Confermato'],['produzione','In produzione'],['pronto','Pronto'],['ritirato','Ritirato'],['consegnato','Consegnato']];
 const LBL=Object.fromEntries(FLOW);
+const isClosed=o=>o.stato==='ritirato'||o.stato==='consegnato';
 const TIPI=['Su misura','Cerimonia','Aziendale','Stagionale'];
 const PRODOTTI=['Torta chantilly e amarene','Torta nuda ai frutti di bosco','Torta a piani','Mignon assortiti','Pastiera di grano','Box biscotti secchi','Panettone artigianale','Colomba artigianale','Crostata'];
 
@@ -319,17 +320,17 @@ const byWhen=(a,b)=>(a.ritiro+a.ora).localeCompare(b.ritiro+b.ora);
 /* AGENDA */
 function renderAgenda(){
   const today=addDays(0);
-  const list=orders.filter(o=>filter==='all'?(o.ritiro>=today||o.stato!=='ritirato'):o.stato!=='ritirato').sort(byWhen);
+  const list=orders.filter(o=>filter==='all'?(o.ritiro>=today||!isClosed(o)):!isClosed(o)).sort(byWhen);
   const el=$('#agenda');
   if(!list.length){el.innerHTML='<div class="empty"><b>Nessun ordine da consegnare</b>Aggiungine uno con + Nuovo.</div>';return}
   const groups={};list.forEach(o=>(groups[o.ritiro]=groups[o.ritiro]||[]).push(o));
   el.innerHTML=Object.keys(groups).sort().map(d=>{
-    const g=groups[d];const open=g.filter(o=>o.stato!=='ritirato').length;
+    const g=groups[d];const open=g.filter(o=>!isClosed(o)).length;
     const late=d<today;
     const head=late?'In ritardo':(rel(d)||MESI[dateOf(d).getMonth()]);
     return `<div class="day"><div class="dayhead"><h2>${big(d)}</h2><p>${head}<br>${g.length} ${g.length===1?'ordine':'ordini'}${open!==g.length?`, ${open} da consegnare`:''}</p></div>`+
     g.map(o=>{const saldo=(+o.totale||0)-(+o.acconto||0);
-      return `<button class="ord ${o.stato==='ritirato'?'done':''}" data-id="${o.id}"><span class="t">${esc(o.ora)}</span><span class="m"><b>${esc(o.cliente)}</b><span>${o.qty} × ${esc(o.prodotto)}</span>${saldo>0&&o.stato!=='ritirato'?`<span class="due">Da incassare ${eur(saldo)}</span>`:''}</span><span class="st s-${o.stato}">${LBL[o.stato]}</span></button>`}).join('')+'</div>';
+      return `<button class="ord ${isClosed(o)?'done':''}" data-id="${o.id}"><span class="t">${esc(o.ora)}</span><span class="m"><b>${esc(o.cliente)}</b><span>${o.qty} × ${esc(o.prodotto)}</span>${saldo>0&&!isClosed(o)?`<span class="due">Da incassare ${eur(saldo)}</span>`:''}</span><span class="st s-${o.stato}">${LBL[o.stato]}</span></button>`}).join('')+'</div>';
   }).join('');
 }
 
@@ -337,7 +338,7 @@ function renderAgenda(){
 function renderProd(){
   const days=[];for(let i=0;i<8;i++)days.push(addDays(i));
   $('#prodDays').innerHTML=days.map(d=>`<button class="chip" data-pday="${d}" aria-pressed="${d===prodDay}" ${isMonday(d)?'disabled':''}>${rel(d)||big(d)}</button>`).join('');
-  const list=orders.filter(o=>o.ritiro===prodDay&&o.stato!=='ritirato').sort(byWhen);
+  const list=orders.filter(o=>o.ritiro===prodDay&&!isClosed(o)).sort(byWhen);
   const el=$('#prod');
   if(!list.length){el.innerHTML=`<div class="empty"><b>Niente da preparare per ${esc(longDate(prodDay))}</b>Gli ordini con ritiro in questo giorno compariranno qui.</div>`;return}
   const agg={};list.forEach(o=>{agg[o.prodotto]=agg[o.prodotto]||{q:0,n:0};agg[o.prodotto].q+=+o.qty||0;agg[o.prodotto].n++});
@@ -434,7 +435,7 @@ function fullDate(s){const d=dateOf(s);return GFULL[d.getDay()]+' '+d.getDate()+
 function renderPrint(mode){
   const days=[];
   for(let i=0;i<(mode==='week'?7:1);i++){const d=dateOf(prodDay);d.setDate(d.getDate()+i);days.push(iso(d))}
-  const pages=days.filter(d=>!isMonday(d)).map(d=>({d,list:orders.filter(o=>o.ritiro===d&&o.stato!=='ritirato').sort(byWhen)})).filter(p=>p.list.length);
+  const pages=days.filter(d=>!isMonday(d)).map(d=>({d,list:orders.filter(o=>o.ritiro===d&&!isClosed(o)).sort(byWhen)})).filter(p=>p.list.length);
   const now=new Date();const stamp='Stampato il '+now.getDate()+' '+MESI[now.getMonth()]+' alle '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
   if(!pages.length){$('#psheet').innerHTML=`<div class="empty" style="color:#555"><b style="color:#000">Nessuna comanda da stampare</b>Non ci sono ordini da preparare ${mode==='week'?'nei 7 giorni da '+esc(fullDate(prodDay)).toLowerCase():'per '+esc(fullDate(prodDay)).toLowerCase()}.</div>`;return}
   $('#psheet').innerHTML=pages.map(({d,list})=>{
