@@ -85,6 +85,29 @@ header{display:flex;align-items:flex-end;justify-content:space-between;padding:1
 .prow .q{font-weight:900;font-stretch:62%;font-size:40px;line-height:.9;min-width:64px}
 .prow .n{flex:1;font-weight:600}
 .prow .c{font-size:14px;color:var(--muted)}
+
+/* Rubrica */
+.contatto{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:14px 0;cursor:pointer}
+.contatto:hover b{text-decoration:underline}
+.contatto .info{min-width:0}
+.contatto .info b{display:block;font-weight:700}
+.contatto .info span{display:block;font-size:14px;color:var(--muted)}
+.contatto .val{flex:0 0 auto;text-align:right;font-weight:800;white-space:nowrap}
+.contatto .val small{display:block;font-weight:500;font-size:12px;color:var(--muted)}
+
+/* Storico */
+.mesebar{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:10px 0;cursor:pointer;border-radius:0}
+.mesebar[aria-pressed="true"] .lbl b{color:var(--crema)}
+.mesebar .lbl{width:74px;flex:0 0 auto}
+.mesebar .lbl b{display:block;font-weight:800;font-stretch:80%;text-transform:capitalize}
+.mesebar .lbl span{display:block;font-size:12px;color:var(--muted)}
+.mesebar .track{flex:1;height:10px;background:var(--surface);border-radius:5px;overflow:hidden}
+.mesebar .fill{display:block;height:100%;background:var(--crema);border-radius:5px}
+.mesebar .val{width:28px;flex:0 0 auto;text-align:right;font-weight:800}
+.menurow{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:18px 0;cursor:pointer}
+.menurow .m b{display:block;font-weight:700;font-size:17px}
+.menurow .m span{display:block;font-size:14px;color:var(--muted);margin-top:2px}
+.menurow .arrow{font-size:20px;color:var(--muted)}
 h3{font-size:15px;font-weight:700;margin:30px 0 8px;color:var(--muted)}
 .lab{border-left:4px solid var(--crema);padding:10px 0 10px 14px;margin-bottom:12px;background:var(--surface)}
 .lab b{display:block}
@@ -106,7 +129,7 @@ form{margin-top:10px}
 
 /* Bottom nav */
 nav{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
-nav .in{max-width:720px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr}
+nav .in{max-width:720px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr 1fr}
 nav button{background:none;border:0;padding:14px 4px;font-weight:700;font-size:15px;color:var(--muted);cursor:pointer;border-top:3px solid transparent;margin-top:-1px}
 nav button[aria-current="page"]{color:var(--ink);border-top-color:var(--ink)}
 nav button.new{color:var(--ink)}
@@ -167,7 +190,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
   @page{size:A4;margin:12mm}
   :root,:root:not([data-theme="light"]),:root[data-theme="dark"]{padding:0;--bg:#fff;--ink:#000;color-scheme:light}
   body{background:#fff;color:#000}
-  header,nav,.toast,dialog,.noprint,#v-agenda,#v-prod,#v-new{display:none!important}
+  header,nav,.toast,dialog,.noprint,#v-agenda,#v-prod,#v-new,#v-altro,#v-rubrica,#v-storico{display:none!important}
   #v-print{display:block!important}
   .wrap{padding:0;max-width:none}
   .psheet{padding:0}
@@ -252,16 +275,35 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
       <button class="primary" type="submit">Salva ordine</button>
     </form>
   </section>
+
+  <section id="v-altro" hidden>
+    <button class="menurow" data-nav="rubrica"><span class="m"><b>Rubrica clienti</b><span>Cerca un cliente e rivedi il suo storico</span></span><span class="arrow">→</span></button>
+    <button class="menurow" data-nav="storico"><span class="m"><b>Storico e statistiche</b><span>Tutti gli ordini passati, mese per mese</span></span><span class="arrow">→</span></button>
+  </section>
+
+  <section id="v-rubrica" hidden>
+    <button class="ghost" data-back="altro" style="margin-bottom:16px">← Indietro</button>
+    <input id="rubricaSearch" placeholder="Cerca per nome o telefono" style="width:100%;background:var(--surface);border:1.5px solid transparent;border-radius:6px;padding:12px;font-size:16px;margin-bottom:6px">
+    <div id="rubricaList"></div>
+  </section>
+
+  <section id="v-storico" hidden>
+    <button class="ghost" data-back="altro" style="margin-bottom:16px">← Indietro</button>
+    <div id="storicoMesi"></div>
+    <div id="storicoLista"></div>
+  </section>
 </div>
 
 <nav><div class="in">
   <button data-view="agenda" aria-current="page">Agenda</button>
   <button data-view="prod">Produzione</button>
+  <button data-view="altro">Altro</button>
   <button data-view="new" class="new"><span>+ Nuovo</span></button>
 </div></nav>
 </div>
 
 <dialog id="sheet"><div class="sheet" id="sheetBody"></div></dialog>
+<dialog id="sheetCliente"><div class="sheet" id="clienteBody"></div></dialog>
 <div class="toast" id="toast" role="status"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -318,6 +360,10 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');
 const byWhen=(a,b)=>(a.ritiro+a.ora).localeCompare(b.ritiro+b.ora);
 
 /* AGENDA */
+function ordRow(o){
+  const saldo=(+o.totale||0)-(+o.acconto||0);
+  return `<button class="ord ${isClosed(o)?'done':''}" data-id="${o.id}"><span class="t">${esc(o.ora)}</span><span class="m"><b>${esc(o.cliente)}</b><span>${o.qty} × ${esc(o.prodotto)}</span>${saldo>0&&!isClosed(o)?`<span class="due">Da incassare ${eur(saldo)}</span>`:''}</span><span class="st s-${o.stato}">${LBL[o.stato]}</span></button>`;
+}
 function renderAgenda(){
   const today=addDays(0);
   const list=orders.filter(o=>filter==='all'?(o.ritiro>=today||!isClosed(o)):!isClosed(o)).sort(byWhen);
@@ -329,8 +375,7 @@ function renderAgenda(){
     const late=d<today;
     const head=late?'In ritardo':(rel(d)||MESI[dateOf(d).getMonth()]);
     return `<div class="day"><div class="dayhead"><h2>${big(d)}</h2><p>${head}<br>${g.length} ${g.length===1?'ordine':'ordini'}${open!==g.length?`, ${open} da consegnare`:''}</p></div>`+
-    g.map(o=>{const saldo=(+o.totale||0)-(+o.acconto||0);
-      return `<button class="ord ${isClosed(o)?'done':''}" data-id="${o.id}"><span class="t">${esc(o.ora)}</span><span class="m"><b>${esc(o.cliente)}</b><span>${o.qty} × ${esc(o.prodotto)}</span>${saldo>0&&!isClosed(o)?`<span class="due">Da incassare ${eur(saldo)}</span>`:''}</span><span class="st s-${o.stato}">${LBL[o.stato]}</span></button>`}).join('')+'</div>';
+    g.map(ordRow).join('')+'</div>';
   }).join('');
 }
 
@@ -355,6 +400,77 @@ function renderForm(){
   $('#tipi').innerHTML=TIPI.map(t=>`<button type="button" class="chip" data-tipo="${t}" aria-pressed="${t===newTipo}">${t}</button>`).join('');
 }
 $('#prodotti').innerHTML=PRODOTTI.map(p=>`<option value="${esc(p)}">`).join('');
+
+/* RUBRICA */
+function renderRubrica(){
+  const q=($('#rubricaSearch').value||'').trim().toLowerCase();
+  const map={};
+  orders.forEach(o=>{
+    const c=map[o.tel]||(map[o.tel]={tel:o.tel,nome:o.cliente,count:0,totale:0,ultimo:o.ritiro});
+    c.count++; c.totale+=(+o.totale||0);
+    if(o.ritiro>c.ultimo){c.ultimo=o.ritiro;c.nome=o.cliente}
+  });
+  let list=Object.values(map);
+  if(q) list=list.filter(c=>c.nome.toLowerCase().includes(q)||c.tel.includes(q));
+  list.sort((a,b)=>b.ultimo.localeCompare(a.ultimo));
+  const el=$('#rubricaList');
+  if(!list.length){el.innerHTML=`<div class="empty"><b>Nessun cliente trovato</b>Compare qui automaticamente chi ha almeno un ordine.</div>`;return}
+  el.innerHTML=list.map(c=>`<button class="contatto" data-tel="${esc(c.tel)}"><span class="info"><b>${esc(c.nome)}</b><span>${esc(c.tel)} · ${c.count} ${c.count===1?'ordine':'ordini'}</span></span><span class="val">${eur(c.totale)}<small>${longDate(c.ultimo)}</small></span></button>`).join('');
+}
+function openClienteSheet(tel){
+  const list=orders.filter(o=>o.tel===tel).sort(byWhen).reverse();
+  if(!list.length)return;
+  const nome=list[0].cliente;
+  const totale=list.reduce((s,o)=>s+(+o.totale||0),0);
+  $('#clienteBody').innerHTML=`
+    <h2>${esc(nome)}</h2>
+    <div class="sub">${esc(tel)} · ${list.length} ${list.length===1?'ordine':'ordini'} · ${eur(totale)} totale</div>
+    <div class="acts">
+      <a class="wa" target="_blank" rel="noopener" href="https://wa.me/${waNumber(tel)}">Scrivi su WhatsApp</a>
+      <a href="tel:${esc(tel.replace(/\s/g,''))}">Chiama</a>
+    </div>
+    <h3>Storico ordini</h3>
+    ${list.map(ordRow).join('')}`;
+  const d=$('#sheetCliente');if(!d.open)d.showModal();
+}
+$('#rubricaSearch').addEventListener('input',renderRubrica);
+$('#sheetCliente').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.close()});
+
+/* STORICO */
+let storicoMese=null;
+function monthsBack(n){
+  const out=[];const d=new Date();d.setDate(1);
+  for(let i=0;i<n;i++){
+    out.push({key:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),anno:d.getFullYear(),nomeBreve:MESI[d.getMonth()].slice(0,3)});
+    d.setMonth(d.getMonth()-1);
+  }
+  return out;
+}
+function renderStorico(){
+  const months=monthsBack(12);
+  if(!storicoMese)storicoMese=months[0].key;
+  const byKey=Object.fromEntries(months.map(m=>[m.key,Object.assign({count:0,totale:0},m)]));
+  orders.forEach(o=>{
+    const k=(o.ritiro||'').slice(0,7);
+    if(byKey[k]){byKey[k].count++;byKey[k].totale+=(+o.totale||0)}
+  });
+  const maxCount=Math.max(1,...months.map(m=>byKey[m.key].count));
+  $('#storicoMesi').innerHTML=months.map(m=>{
+    const c=byKey[m.key];const pct=c.count?Math.max(4,Math.round(c.count/maxCount*100)):0;
+    return `<button class="mesebar" data-mese="${m.key}" aria-pressed="${m.key===storicoMese}"><span class="lbl"><b>${m.nomeBreve}</b><span>${m.anno}</span></span><span class="track"><span class="fill" style="width:${pct}%"></span></span><span class="val">${c.count}</span></button>`;
+  }).join('');
+  const sel=byKey[storicoMese];
+  const list=orders.filter(o=>(o.ritiro||'').slice(0,7)===storicoMese);
+  const el=$('#storicoLista');
+  if(!list.length){el.innerHTML=`<div class="empty"><b>Nessun ordine in ${sel.nomeBreve} ${sel.anno}</b></div>`;return}
+  const groups={};list.forEach(o=>(groups[o.ritiro]=groups[o.ritiro]||[]).push(o));
+  const days=Object.keys(groups).sort().reverse();
+  el.innerHTML=`<h3>${list.length} ${list.length===1?'ordine':'ordini'} · ${eur(sel.totale)} incassato</h3>`+
+    days.map(d=>{
+      const g=groups[d].sort(byWhen);
+      return `<div class="day"><div class="dayhead"><h2>${big(d)}</h2><p>${MESI[dateOf(d).getMonth()]}<br>${g.length} ${g.length===1?'ordine':'ordini'}</p></div>`+g.map(ordRow).join('')+'</div>';
+    }).join('');
+}
 
 /* SHEET */
 function waNumber(t){let d=String(t).replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);if(!d.startsWith('39'))d='39'+d;return d}
@@ -412,10 +528,14 @@ $('#sheet').addEventListener('click',async e=>{
 document.addEventListener('click',e=>{
   const v=e.target.closest('nav [data-view]');if(v){show(v.dataset.view);return}
   const f=e.target.closest('[data-filter]');if(f){filter=f.dataset.filter;document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',b===f));renderAgenda();return}
-  const r=e.target.closest('.ord');if(r){openSheet(r.dataset.id);return}
+  const r=e.target.closest('.ord');if(r){if($('#sheetCliente').open)$('#sheetCliente').close();openSheet(r.dataset.id);return}
   const p=e.target.closest('[data-pday]');if(p){prodDay=p.dataset.pday;renderProd();return}
   const n=e.target.closest('[data-nday]');if(n){newDay=n.dataset.nday;renderForm();return}
   const t=e.target.closest('[data-tipo]');if(t){newTipo=t.dataset.tipo;renderForm();return}
+  const nv=e.target.closest('[data-nav]');if(nv){const to=nv.dataset.nav;show(to);if(to==='rubrica')renderRubrica();if(to==='storico')renderStorico();return}
+  const bk=e.target.closest('[data-back]');if(bk){show(bk.dataset.back);return}
+  const c=e.target.closest('.contatto');if(c){openClienteSheet(c.dataset.tel);return}
+  const mb=e.target.closest('[data-mese]');if(mb){storicoMese=mb.dataset.mese;renderStorico();return}
 });
 $('#data').addEventListener('change',e=>{const v=e.target.value;if(!v)return;if(isMonday(v)){toast('Il lunedì siamo chiusi');e.target.value=newDay;return}newDay=v;renderForm()});
 $('#form').addEventListener('submit',async e=>{
@@ -458,8 +578,9 @@ $('#pback').addEventListener('click',()=>show('prod'));
 $('#pgo').addEventListener('click',()=>{try{window.print()}catch(err){toast('Usa Stampa dal menu del browser')}});
 
 function show(v){
-  ['agenda','prod','new','print'].forEach(k=>$('#v-'+k).hidden=k!==v);
-  const cur=v==='print'?'prod':v;
+  ['agenda','prod','new','print','altro','rubrica','storico'].forEach(k=>$('#v-'+k).hidden=k!==v);
+  const navMap={print:'prod',rubrica:'altro',storico:'altro'};
+  const cur=navMap[v]||v;
   document.querySelectorAll('nav [data-view]').forEach(b=>{if(b.dataset.view===cur)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
   window.scrollTo(0,0);
 }
