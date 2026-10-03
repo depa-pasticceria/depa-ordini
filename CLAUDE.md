@@ -21,6 +21,7 @@ Funzioni già presenti:
 - Comande stampabili A4 per giorno o per settimana (un giorno per foglio), ottimizzate per stampa in bianco e nero, da appendere in bacheca produzione
 - Installabile come PWA su smartphone e PC (manifest + service worker network-first, sempre aggiornato online)
 - Modifica ordine: pulsante "Modifica" nella scheda ordine, riapre il form precompilato (lo stato resta invariato); dopo il salvataggio si può reinviare la conferma WhatsApp aggiornata
+- Cliente dalla rubrica nel nuovo ordine: scrivendo nome o telefono nel campo Cliente compaiono i clienti già presenti (max 5), un tocco compila nome e telefono; in alternativa pulsante "Nuovo ordine" nella scheda cliente della Rubrica
 - Promemoria push (Altro > Promemoria ordini): ogni mattina il dispositivo riceve l'elenco degli ordini di domani e/o dopodomani (scelta per dispositivo), anche ad app chiusa. Vedi sezione Notifiche push
 - Sezione "Altro" in nav: Rubrica clienti (ricavata dagli ordini, raggruppata per telefono, con ricerca e scheda cliente) e Storico ordini (ultimi 12 mesi con barra comparativa ordini/mese, per individuare i periodi di picco/calo, e lista ordini del mese selezionato)
 

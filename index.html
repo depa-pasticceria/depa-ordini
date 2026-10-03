@@ -124,6 +124,11 @@ form{margin-top:10px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .f .chips{padding-top:0}
 .hint{font-size:13px;color:var(--muted);margin-top:4px}
+.sugg{margin-top:6px;border:1.5px solid var(--line);border-radius:6px;overflow:hidden}
+.sugg button{display:flex;justify-content:space-between;align-items:baseline;gap:12px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:12px;cursor:pointer}
+.sugg button:first-child{border-top:0}
+.sugg b{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sugg span{flex:0 0 auto;font-size:14px;color:var(--muted)}
 .primary{width:100%;margin-top:26px;background:var(--ink);color:var(--bg);border:0;border-radius:6px;padding:16px;font-weight:800;font-size:17px;cursor:pointer}
 .primary:active{transform:scale(.99)}
 .editbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px;padding:12px 14px;background:var(--crema);color:var(--on-crema);border-radius:6px;font-weight:700}
@@ -253,7 +258,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
   <section id="v-new" hidden>
     <form id="form" autocomplete="off">
       <div class="editbar" id="editBar" hidden><span id="editTitle"></span><button type="button" class="linkbtn" id="editCancel">Annulla</button></div>
-      <div class="f"><label for="cliente">Cliente</label><input id="cliente" required placeholder="Nome e cognome o azienda"></div>
+      <div class="f"><label for="cliente">Cliente</label><input id="cliente" required placeholder="Nome e cognome o azienda"><div class="sugg" id="clienteSugg" hidden></div></div>
       <div class="f"><label for="tel">Telefono</label><input id="tel" type="tel" inputmode="tel" required placeholder="333 123 4567"></div>
       <div class="f"><span class="lbl">Tipo</span>
         <div class="chips" id="tipi"></div></div>
@@ -428,6 +433,7 @@ function resetForm(){
   $('#form').reset();$('#qty').value=1;$('#ora').value='17:00';
   newDay=nextOpen(1);newTipo='Su misura';newModalita='ritiro';
   $('#editBar').hidden=true;$('#formSubmit').textContent='Salva ordine';
+  $('#clienteSugg').hidden=true;
   renderForm();
 }
 function startEdit(id){
@@ -439,11 +445,25 @@ function startEdit(id){
   $('#editBar').hidden=false;$('#formSubmit').textContent='Salva modifiche';
   renderForm();show('new');
 }
+// Suggerimenti dalla rubrica mentre si scrive il cliente: un tocco compila nome e telefono
+function renderSugg(){
+  const q=$('#cliente').value.trim().toLowerCase();
+  const list=q?clienti(q).slice(0,5):[];
+  const el=$('#clienteSugg');
+  el.hidden=!list.length;
+  el.innerHTML=list.map(c=>`<button type="button" data-pick="${esc(c.tel)}"><b>${esc(c.nome)}</b><span>${esc(c.tel)}</span></button>`).join('');
+}
+function pickCliente(tel){
+  const c=clienti().find(x=>x.tel===tel);if(!c)return;
+  $('#cliente').value=c.nome;$('#tel').value=c.tel;
+  $('#clienteSugg').hidden=true;
+}
+$('#cliente').addEventListener('input',renderSugg);
 $('#editCancel').addEventListener('click',()=>{const id=editingId;resetForm();show('agenda');if(id)openSheet(id)});
 
 /* RUBRICA */
-function renderRubrica(){
-  const q=($('#rubricaSearch').value||'').trim().toLowerCase();
+// Clienti ricavati dagli ordini (raggruppati per telefono), dal più recente; q filtra per nome o telefono
+function clienti(q){
   const map={};
   orders.forEach(o=>{
     const c=map[o.tel]||(map[o.tel]={tel:o.tel,nome:o.cliente,count:0,totale:0,ultimo:o.ritiro});
@@ -452,7 +472,10 @@ function renderRubrica(){
   });
   let list=Object.values(map);
   if(q) list=list.filter(c=>c.nome.toLowerCase().includes(q)||c.tel.includes(q));
-  list.sort((a,b)=>b.ultimo.localeCompare(a.ultimo));
+  return list.sort((a,b)=>b.ultimo.localeCompare(a.ultimo));
+}
+function renderRubrica(){
+  const list=clienti(($('#rubricaSearch').value||'').trim().toLowerCase());
   const el=$('#rubricaList');
   if(!list.length){el.innerHTML=`<div class="empty"><b>Nessun cliente trovato</b>Compare qui automaticamente chi ha almeno un ordine.</div>`;return}
   el.innerHTML=list.map(c=>`<button class="contatto" data-tel="${esc(c.tel)}"><span class="info"><b>${esc(c.nome)}</b><span>${esc(c.tel)} · ${c.count} ${c.count===1?'ordine':'ordini'}</span></span><span class="val">${eur(c.totale)}<small>${longDate(c.ultimo)}</small></span></button>`).join('');
@@ -468,6 +491,7 @@ function openClienteSheet(tel){
     <div class="acts">
       <a class="wa" target="_blank" rel="noopener" href="https://wa.me/${waNumber(tel)}">Scrivi su WhatsApp</a>
       <a href="tel:${esc(tel.replace(/\s/g,''))}">Chiama</a>
+      <button data-neword="${esc(tel)}">Nuovo ordine</button>
     </div>
     <h3>Storico ordini</h3>
     ${list.map(ordRow).join('')}`;
@@ -661,6 +685,8 @@ document.addEventListener('click',e=>{
   const nv=e.target.closest('[data-nav]');if(nv){const to=nv.dataset.nav;show(to);if(to==='rubrica')renderRubrica();if(to==='storico')renderStorico();if(to==='notifiche')renderNotifiche();return}
   const bk=e.target.closest('[data-back]');if(bk){show(bk.dataset.back);return}
   const c=e.target.closest('.contatto');if(c){openClienteSheet(c.dataset.tel);return}
+  const pk=e.target.closest('[data-pick]');if(pk){pickCliente(pk.dataset.pick);$('#prodotto').focus();return}
+  const no=e.target.closest('[data-neword]');if(no){$('#sheetCliente').close();resetForm();pickCliente(no.dataset.neword);show('new');return}
   const mb=e.target.closest('[data-mese]');if(mb){storicoMese=mb.dataset.mese;renderStorico();return}
 });
 $('#data').addEventListener('change',e=>{const v=e.target.value;if(!v)return;if(isMonday(v)){toast('Il lunedì siamo chiusi');e.target.value=newDay;return}newDay=v;renderForm()});
