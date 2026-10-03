@@ -126,6 +126,8 @@ form{margin-top:10px}
 .hint{font-size:13px;color:var(--muted);margin-top:4px}
 .primary{width:100%;margin-top:26px;background:var(--ink);color:var(--bg);border:0;border-radius:6px;padding:16px;font-weight:800;font-size:17px;cursor:pointer}
 .primary:active{transform:scale(.99)}
+.editbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px;padding:12px 14px;background:var(--crema);color:var(--on-crema);border-radius:6px;font-weight:700}
+.editbar .linkbtn{padding:0;color:var(--on-crema);font-weight:700}
 
 /* Bottom nav */
 nav{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
@@ -151,7 +153,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 .acts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
 .acts a,.acts button{display:block;text-align:center;padding:14px;border-radius:6px;font-weight:700;text-decoration:none;cursor:pointer;border:1.5px solid var(--ink);background:none}
 .acts .wa{background:var(--crema);color:var(--on-crema);border-color:var(--crema);grid-column:1/-1}
-.acts .del{border-color:var(--line);color:var(--warn)}
+.acts .del{border-color:var(--line);color:var(--warn);grid-column:1/-1}
 
 /* Toast */
 .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:6px;font-weight:700;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:10}
@@ -191,7 +193,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
   @page{size:A4;margin:12mm}
   :root,:root:not([data-theme="light"]),:root[data-theme="dark"]{padding:0;--bg:#fff;--ink:#000;color-scheme:light}
   body{background:#fff;color:#000}
-  header,nav,.toast,dialog,.noprint,#v-agenda,#v-prod,#v-new,#v-altro,#v-rubrica,#v-storico{display:none!important}
+  header,nav,.toast,dialog,.noprint,#v-agenda,#v-prod,#v-new,#v-altro,#v-rubrica,#v-storico,#v-notifiche{display:none!important}
   #v-print{display:block!important}
   .wrap{padding:0;max-width:none}
   .psheet{padding:0}
@@ -250,6 +252,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 
   <section id="v-new" hidden>
     <form id="form" autocomplete="off">
+      <div class="editbar" id="editBar" hidden><span id="editTitle"></span><button type="button" class="linkbtn" id="editCancel">Annulla</button></div>
       <div class="f"><label for="cliente">Cliente</label><input id="cliente" required placeholder="Nome e cognome o azienda"></div>
       <div class="f"><label for="tel">Telefono</label><input id="tel" type="tel" inputmode="tel" required placeholder="333 123 4567"></div>
       <div class="f"><span class="lbl">Tipo</span>
@@ -275,13 +278,24 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
         <div><label for="acconto">Acconto €</label><input id="acconto" type="number" min="0" step="0.5" inputmode="decimal"></div>
       </div>
       <div class="f"><label for="note">Note</label><textarea id="note" rows="2" placeholder="Decorazioni, colori, riferimenti foto"></textarea></div>
-      <button class="primary" type="submit">Salva ordine</button>
+      <button class="primary" type="submit" id="formSubmit">Salva ordine</button>
     </form>
   </section>
 
   <section id="v-altro" hidden>
     <button class="menurow" data-nav="rubrica"><span class="m"><b>Rubrica clienti</b><span>Cerca un cliente e rivedi il suo storico</span></span><span class="arrow">→</span></button>
     <button class="menurow" data-nav="storico"><span class="m"><b>Storico e statistiche</b><span>Tutti gli ordini passati, mese per mese</span></span><span class="arrow">→</span></button>
+    <button class="menurow" data-nav="notifiche"><span class="m"><b>Promemoria ordini</b><span>Un avviso sul telefono prima di ritiri e consegne</span></span><span class="arrow">→</span></button>
+  </section>
+
+  <section id="v-notifiche" hidden>
+    <button class="ghost" data-back="altro" style="margin-bottom:16px">← Indietro</button>
+    <p class="phint" style="font-size:15px;color:var(--ink)">Ogni mattina questo dispositivo riceve l’elenco degli ordini in arrivo, anche ad app chiusa.</p>
+    <div class="f"><span class="lbl">Quando avvisare</span>
+      <div class="chips" id="anticipi"></div></div>
+    <button class="primary" id="pushToggle" hidden>Attiva su questo dispositivo</button>
+    <button class="ghost" id="pushTest" style="width:100%;margin-top:10px" hidden>Invia una notifica di prova</button>
+    <div class="hint" id="pushState" style="margin-top:12px;font-size:14px"></div>
   </section>
 
   <section id="v-rubrica" hidden>
@@ -359,6 +373,7 @@ function subscribeRealtime(){
 function unsubscribeRealtime(){if(channel){sb.removeChannel(channel);channel=null}}
 
 let filter='todo', prodDay=nextOpen(0), newDay=nextOpen(1), newTipo='Su misura', newModalita='ritiro';
+let editingId=null;
 
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('on'),1800)}
 const byWhen=(a,b)=>(a.ritiro+a.ora).localeCompare(b.ritiro+b.ora);
@@ -400,11 +415,31 @@ function renderProd(){
 function renderForm(){
   const days=[];for(let i=0;i<8;i++)days.push(addDays(i));
   $('#giorni').innerHTML=days.map(d=>`<button type="button" class="chip" data-nday="${d}" aria-pressed="${d===newDay}" ${isMonday(d)?'disabled':''}>${rel(d)||big(d)}</button>`).join('');
-  $('#data').value=newDay;$('#data').min=addDays(0);
+  // In modifica un ordine già passato deve poter tenere la sua data, altrimenti il form non si salva
+  const today=addDays(0);
+  $('#data').value=newDay;$('#data').min=editingId&&newDay<today?newDay:today;
   $('#tipi').innerHTML=TIPI.map(t=>`<button type="button" class="chip" data-tipo="${t}" aria-pressed="${t===newTipo}">${t}</button>`).join('');
   $('#modalita').innerHTML=MODALITA.map(([k,l])=>`<button type="button" class="chip" data-modalita="${k}" aria-pressed="${k===newModalita}">${l}</button>`).join('');
 }
 $('#prodotti').innerHTML=PRODOTTI.map(p=>`<option value="${esc(p)}">`).join('');
+const FORM_FIELDS=['cliente','tel','prodotto','qty','ora','scritta','allergeni','totale','acconto','note'];
+function resetForm(){
+  editingId=null;
+  $('#form').reset();$('#qty').value=1;$('#ora').value='17:00';
+  newDay=nextOpen(1);newTipo='Su misura';newModalita='ritiro';
+  $('#editBar').hidden=true;$('#formSubmit').textContent='Salva ordine';
+  renderForm();
+}
+function startEdit(id){
+  const o=orders.find(x=>x.id===id);if(!o)return;
+  editingId=id;
+  FORM_FIELDS.forEach(k=>{$('#'+k).value=(k==='totale'||k==='acconto')&&!+o[k]?'':(o[k]??'')});
+  newDay=o.ritiro;newTipo=o.tipo;newModalita=o.modalita||'ritiro';
+  $('#editTitle').textContent='Modifica ordine di '+o.cliente;
+  $('#editBar').hidden=false;$('#formSubmit').textContent='Salva modifiche';
+  renderForm();show('new');
+}
+$('#editCancel').addEventListener('click',()=>{const id=editingId;resetForm();show('agenda');if(id)openSheet(id)});
 
 /* RUBRICA */
 function renderRubrica(){
@@ -477,6 +512,83 @@ function renderStorico(){
     }).join('');
 }
 
+/* PROMEMORIA (web push) */
+const VAPID_PUBLIC='BCmhYwqpEIoKpNDaQnKyVErs-uD_TcLRqdsoR-2u3iEcFVVAA4cqoPRMajXzlPE7TzvWTCetT_9W-hFLptqq2Uo';
+const ANTICIPI=[[1,'Il giorno prima'],[2,'Due giorni prima']];
+let anticipi=[1], pushBusy=false;
+const pushSupported=()=>'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
+const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const isStandalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+function b64ToU8(s){const b=atob((s+'='.repeat((4-s.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(b,c=>c.charCodeAt(0))}
+async function currentSub(){if(!pushSupported())return null;const reg=await navigator.serviceWorker.ready;return reg.pushManager.getSubscription()}
+function subRow(sub){const j=sub.toJSON();return {endpoint:j.endpoint,p256dh:j.keys.p256dh,auth:j.keys.auth}}
+async function renderNotifiche(){
+  $('#anticipi').innerHTML=ANTICIPI.map(([n,l])=>`<button type="button" class="chip" data-anticipo="${n}" aria-pressed="${anticipi.includes(n)}">${l}</button>`).join('');
+  const st=$('#pushState'),tg=$('#pushToggle'),ts=$('#pushTest');
+  tg.hidden=ts.hidden=true;
+  if(!pushSupported()){
+    st.textContent=isIOS&&!isStandalone()
+      ?'Su iPhone le notifiche funzionano solo dall’app installata: tocca Condividi, poi “Aggiungi alla schermata Home”, apri DEPA Ordini da lì e torna in questa pagina.'
+      :'Questo browser non supporta le notifiche. Usa Chrome su Android o l’app installata su iPhone.';
+    return;
+  }
+  if(Notification.permission==='denied'){st.textContent='Le notifiche sono bloccate per questo sito. Riattivale dalle impostazioni del browser e ricarica la pagina.';return}
+  const sub=await currentSub();
+  tg.hidden=false;
+  tg.textContent=sub?'Disattiva su questo dispositivo':'Attiva su questo dispositivo';
+  ts.hidden=!sub;
+  st.textContent=sub?'Promemoria attivi su questo dispositivo.':'Promemoria non attivi su questo dispositivo.';
+}
+async function loadAnticipi(){
+  const sub=await currentSub();if(!sub)return;
+  const {data}=await sb.from('push_subscriptions').select('anticipi').eq('endpoint',sub.endpoint).maybeSingle();
+  if(data&&data.anticipi&&data.anticipi.length)anticipi=data.anticipi;
+}
+// All'avvio riallinea l'iscrizione del dispositivo (il browser può rinnovarla da solo)
+async function syncPushSub(){
+  try{const sub=await currentSub();if(!sub)return;
+    await sb.from('push_subscriptions').upsert(subRow(sub),{onConflict:'endpoint'});
+    await loadAnticipi();
+  }catch(err){console.error(err)}
+}
+async function removePushSub(){
+  try{const sub=await currentSub();if(!sub)return;
+    await sb.from('push_subscriptions').delete().eq('endpoint',sub.endpoint);
+    await sub.unsubscribe();
+  }catch(err){console.error(err)}
+}
+$('#pushToggle').addEventListener('click',async()=>{
+  if(pushBusy)return;pushBusy=true;
+  try{
+    const sub=await currentSub();
+    if(sub){await removePushSub();toast('Promemoria disattivati');return}
+    if(await Notification.requestPermission()!=='granted'){toast('Permesso negato');return}
+    const reg=await navigator.serviceWorker.ready;
+    const nuova=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToU8(VAPID_PUBLIC)});
+    const {error}=await sb.from('push_subscriptions').upsert({...subRow(nuova),anticipi},{onConflict:'endpoint'});
+    if(error){await nuova.unsubscribe();throw error}
+    toast('Promemoria attivi');
+  }catch(err){console.error(err);toast('Errore attivazione notifiche')}
+  finally{pushBusy=false;renderNotifiche()}
+});
+$('#pushTest').addEventListener('click',async()=>{
+  const sub=await currentSub();if(!sub)return;
+  const {data:{session}}=await sb.auth.getSession();
+  try{
+    const r=await fetch('/api/promemoria',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(session&&session.access_token)},body:JSON.stringify({endpoint:sub.endpoint})});
+    toast(r.ok?'Notifica di prova inviata':'Invio non riuscito');
+  }catch(err){console.error(err);toast('Invio non riuscito')}
+});
+document.addEventListener('click',async e=>{
+  const a=e.target.closest('[data-anticipo]');if(!a)return;
+  const n=+a.dataset.anticipo;
+  const next=anticipi.includes(n)?anticipi.filter(x=>x!==n):[...anticipi,n].sort();
+  if(!next.length){toast('Scegli almeno un promemoria');return}
+  anticipi=next;renderNotifiche();
+  const sub=await currentSub();
+  if(sub){const {error}=await sb.from('push_subscriptions').update({anticipi}).eq('endpoint',sub.endpoint);if(error){console.error(error);toast('Errore salvataggio')}}
+});
+
 /* SHEET */
 function waNumber(t){let d=String(t).replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);if(!d.startsWith('39'))d='39'+d;return d}
 function waText(o){
@@ -510,6 +622,7 @@ function openSheet(id){
     <div class="acts">
       <a class="wa" target="_blank" rel="noopener" href="https://wa.me/${waNumber(o.tel)}?text=${encodeURIComponent(waText(o))}">${o.stato==='pronto'?'Avvisa su WhatsApp che è pronto':'Invia conferma su WhatsApp'}</a>
       <a href="tel:${esc(o.tel.replace(/\s/g,''))}">Chiama</a>
+      <button data-edit>Modifica</button>
       <button class="del" data-del>Elimina</button>
     </div>`;
   $('#sheetBody').dataset.id=id;
@@ -527,6 +640,7 @@ $('#sheet').addEventListener('click',async e=>{
     upsertLocal(data);renderAll();openSheet(id);toast('Stato: '+LBL[stato]);
     return;
   }
+  if(e.target.closest('[data-edit]')){$('#sheet').close();startEdit(id);return}
   if(e.target.closest('[data-del]')){
     if(!confirm('Eliminare l’ordine di '+o.cliente+'?'))return;
     const {error}=await sb.from('ordini').delete().eq('id',id);
@@ -537,14 +651,14 @@ $('#sheet').addEventListener('click',async e=>{
 
 /* EVENTS */
 document.addEventListener('click',e=>{
-  const v=e.target.closest('nav [data-view]');if(v){show(v.dataset.view);return}
+  const v=e.target.closest('nav [data-view]');if(v){if(v.dataset.view==='new'&&editingId)resetForm();show(v.dataset.view);return}
   const f=e.target.closest('[data-filter]');if(f){filter=f.dataset.filter;document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',b===f));renderAgenda();return}
   const r=e.target.closest('.ord');if(r){if($('#sheetCliente').open)$('#sheetCliente').close();openSheet(r.dataset.id);return}
   const p=e.target.closest('[data-pday]');if(p){prodDay=p.dataset.pday;renderProd();return}
   const n=e.target.closest('[data-nday]');if(n){newDay=n.dataset.nday;renderForm();return}
   const t=e.target.closest('[data-tipo]');if(t){newTipo=t.dataset.tipo;renderForm();return}
   const md=e.target.closest('[data-modalita]');if(md){newModalita=md.dataset.modalita;renderForm();return}
-  const nv=e.target.closest('[data-nav]');if(nv){const to=nv.dataset.nav;show(to);if(to==='rubrica')renderRubrica();if(to==='storico')renderStorico();return}
+  const nv=e.target.closest('[data-nav]');if(nv){const to=nv.dataset.nav;show(to);if(to==='rubrica')renderRubrica();if(to==='storico')renderStorico();if(to==='notifiche')renderNotifiche();return}
   const bk=e.target.closest('[data-back]');if(bk){show(bk.dataset.back);return}
   const c=e.target.closest('.contatto');if(c){openClienteSheet(c.dataset.tel);return}
   const mb=e.target.closest('[data-mese]');if(mb){storicoMese=mb.dataset.mese;renderStorico();return}
@@ -553,11 +667,16 @@ $('#data').addEventListener('change',e=>{const v=e.target.value;if(!v)return;if(
 $('#form').addEventListener('submit',async e=>{
   e.preventDefault();
   const g=id=>$('#'+id).value.trim();
-  const payload={cliente:g('cliente'),tel:g('tel'),tipo:newTipo,modalita:newModalita,prodotto:g('prodotto'),qty:Math.max(1,parseInt(g('qty'))||1),ritiro:newDay,ora:g('ora')||'17:00',scritta:g('scritta'),allergeni:g('allergeni'),totale:parseFloat(g('totale'))||0,acconto:parseFloat(g('acconto'))||0,note:g('note'),stato:'confermato'};
-  const {data,error}=await sb.from('ordini').insert([payload]).select().single();
+  const payload={cliente:g('cliente'),tel:g('tel'),tipo:newTipo,modalita:newModalita,prodotto:g('prodotto'),qty:Math.max(1,parseInt(g('qty'))||1),ritiro:newDay,ora:g('ora')||'17:00',scritta:g('scritta'),allergeni:g('allergeni'),totale:parseFloat(g('totale'))||0,acconto:parseFloat(g('acconto'))||0,note:g('note')};
+  const editing=editingId;
+  const btn=$('#formSubmit');btn.disabled=true;
+  const {data,error}=editing
+    ? await sb.from('ordini').update(payload).eq('id',editing).select().single()
+    : await sb.from('ordini').insert([{...payload,stato:'confermato'}]).select().single();
+  btn.disabled=false;
   if(error){toast('Errore salvataggio');console.error(error);return}
-  upsertLocal(data);e.target.reset();$('#qty').value=1;$('#ora').value='17:00';
-  renderAll();show('agenda');toast('Ordine salvato');
+  upsertLocal(data);resetForm();
+  renderAll();show('agenda');toast(editing?'Modifiche salvate':'Ordine salvato');
   setTimeout(()=>openSheet(data.id),250);
 });
 
@@ -590,8 +709,8 @@ $('#pback').addEventListener('click',()=>show('prod'));
 $('#pgo').addEventListener('click',()=>{try{window.print()}catch(err){toast('Usa Stampa dal menu del browser')}});
 
 function show(v){
-  ['agenda','prod','new','print','altro','rubrica','storico'].forEach(k=>$('#v-'+k).hidden=k!==v);
-  const navMap={print:'prod',rubrica:'altro',storico:'altro'};
+  ['agenda','prod','new','print','altro','rubrica','storico','notifiche'].forEach(k=>$('#v-'+k).hidden=k!==v);
+  const navMap={print:'prod',rubrica:'altro',storico:'altro',notifiche:'altro'};
   const cur=navMap[v]||v;
   document.querySelectorAll('nav [data-view]').forEach(b=>{if(b.dataset.view===cur)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
   window.scrollTo(0,0);
@@ -605,6 +724,7 @@ async function enterApp(){
   await loadOrders();
   renderAll();
   subscribeRealtime();
+  syncPushSub();
 }
 function showLogin(){
   unsubscribeRealtime();
@@ -622,7 +742,8 @@ $('#loginForm').addEventListener('submit',async e=>{
   if(error){err.textContent='Accesso non riuscito. Controlla email e password.';err.hidden=false;return}
   err.hidden=true;
 });
-$('#logout').addEventListener('click',()=>sb.auth.signOut());
+// Chi esce non deve più ricevere i nomi dei clienti in notifica su questo dispositivo
+$('#logout').addEventListener('click',async()=>{await removePushSub();sb.auth.signOut()});
 sb.auth.onAuthStateChange((event,session)=>{
   if(session)enterApp();else showLogin();
 });

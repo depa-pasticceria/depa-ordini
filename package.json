@@ -1,0 +1,9 @@
+{
+  "name": "depa-ordini",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
+    "web-push": "^3.6.7"
+  }
+}
