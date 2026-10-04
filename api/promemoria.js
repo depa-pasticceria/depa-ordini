@@ -97,9 +97,12 @@ async function runTest(sb, req) {
 }
 
 export default async function handler(req, res) {
-  setupVapid();
-  const sb = db();
+  // Configurazione incompleta: risponde con i nomi delle variabili mancanti (mai i valori)
+  const mancanti = ['VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY', 'CRON_SECRET', 'SUPABASE_SECRET_KEY'].filter(k => !(process.env[k] || '').trim());
+  if (mancanti.length) return res.status(500).json({ error: 'variabili d\'ambiente mancanti', mancanti });
   try {
+    setupVapid();
+    const sb = db();
     if (req.method === 'GET') {
       if (!process.env.CRON_SECRET || req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
         return res.status(401).json({ error: 'non autorizzato' });
