@@ -539,7 +539,7 @@ function renderStorico(){
 /* PROMEMORIA (web push) */
 const VAPID_PUBLIC='BCmhYwqpEIoKpNDaQnKyVErs-uD_TcLRqdsoR-2u3iEcFVVAA4cqoPRMajXzlPE7TzvWTCetT_9W-hFLptqq2Uo';
 const ANTICIPI=[[1,'Il giorno prima'],[2,'Due giorni prima']];
-let anticipi=[1], pushBusy=false;
+let anticipi=[1], pushBusy=false, pushActive=false, pushErr='';
 const pushSupported=()=>'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
 const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const isStandalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
@@ -558,10 +558,11 @@ async function renderNotifiche(){
   }
   if(Notification.permission==='denied'){st.textContent='Le notifiche sono bloccate per questo sito. Riattivale dalle impostazioni del browser e ricarica la pagina.';return}
   const sub=await currentSub();
+  pushActive=!!sub;
   tg.hidden=false;
   tg.textContent=sub?'Disattiva su questo dispositivo':'Attiva su questo dispositivo';
   ts.hidden=!sub;
-  st.textContent=sub?'Promemoria attivi su questo dispositivo.':'Promemoria non attivi su questo dispositivo.';
+  st.textContent=sub?'Promemoria attivi su questo dispositivo.':(pushErr||'Promemoria non attivi su questo dispositivo.');
 }
 async function loadAnticipi(){
   const sub=await currentSub();if(!sub)return;
@@ -582,17 +583,24 @@ async function removePushSub(){
   }catch(err){console.error(err)}
 }
 $('#pushToggle').addEventListener('click',async()=>{
-  if(pushBusy)return;pushBusy=true;
+  if(pushBusy)return;pushBusy=true;pushErr='';
+  let fase='permesso';
   try{
-    const sub=await currentSub();
-    if(sub){await removePushSub();toast('Promemoria disattivati');return}
-    if(await Notification.requestPermission()!=='granted'){toast('Permesso negato');return}
+    if(pushActive){await removePushSub();toast('Promemoria disattivati');return}
+    // Su iPhone il permesso va chiesto subito dentro il tocco, prima di qualsiasi altra attesa
+    if(await Notification.requestPermission()!=='granted'){pushErr='Permesso per le notifiche non concesso. Controlla le impostazioni del telefono per DEPA Ordini.';toast('Permesso negato');return}
+    fase='iscrizione';
     const reg=await navigator.serviceWorker.ready;
     const nuova=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToU8(VAPID_PUBLIC)});
+    fase='salvataggio';
     const {error}=await sb.from('push_subscriptions').upsert({...subRow(nuova),anticipi},{onConflict:'endpoint'});
     if(error){await nuova.unsubscribe();throw error}
     toast('Promemoria attivi');
-  }catch(err){console.error(err);toast('Errore attivazione notifiche')}
+  }catch(err){
+    console.error(err);
+    pushErr='Attivazione non riuscita ('+fase+'): '+[err.name,err.code,err.message||String(err)].filter(Boolean).join(' · ');
+    toast('Errore attivazione notifiche');
+  }
   finally{pushBusy=false;renderNotifiche()}
 });
 $('#pushTest').addEventListener('click',async()=>{
