@@ -22,7 +22,7 @@ Funzioni già presenti:
 - Installabile come PWA su smartphone e PC (manifest + service worker network-first, sempre aggiornato online)
 - Modifica ordine: pulsante "Modifica" nella scheda ordine, riapre il form precompilato (lo stato resta invariato); dopo il salvataggio si può reinviare la conferma WhatsApp aggiornata
 - Cliente dalla rubrica nel nuovo ordine: scrivendo nome o telefono nel campo Cliente compaiono i clienti già presenti (max 5), un tocco compila nome e telefono; in alternativa pulsante "Nuovo ordine" nella scheda cliente della Rubrica
-- Promemoria push (Altro > Promemoria ordini): ogni mattina il dispositivo riceve l'elenco degli ordini di domani e/o dopodomani (scelta per dispositivo), anche ad app chiusa. Vedi sezione Notifiche push
+- Promemoria push (Altro > Promemoria ordini): ogni mattina il dispositivo riceve un avviso per ogni ordine di domani e/o dopodomani (scelta per dispositivo), anche ad app chiusa; toccandolo si apre la scheda di quell'ordine. Vedi sezione Notifiche push
 - Sezione "Altro" in nav: Rubrica clienti (ricavata dagli ordini, raggruppata per telefono, con ricerca e scheda cliente) e Storico ordini (ultimi 12 mesi con barra comparativa ordini/mese, per individuare i periodi di picco/calo, e lista ordini del mese selezionato)
 
 Modello dati di un ordine:
@@ -31,7 +31,7 @@ Modello dati di un ordine:
 Colonna `modalita` aggiunta il 2026-09-22 (migrazione in `schema.sql`, da eseguire manualmente su Supabase se non ancora fatto). Scelta alla creazione dell'ordine (chip Ritiro/Consegna, default ritiro); si riflette nel messaggio WhatsApp, nella scheda ordine e nella comanda stampabile ("Da ritirare"/"Da consegnare" accanto all'orario).
 
 ## Notifiche push
-Iscrizioni salvate nella tabella `push_subscriptions` (migrazione in `schema.sql`; colonna `anticipi`: 1 = il giorno prima, 2 = due giorni prima). L'invio lo fa la funzione serverless Vercel `api/promemoria.js`, lanciata da Vercel Cron alle 06:00 UTC (`vercel.json`; sul piano Hobby parte entro quell'ora, quindi circa 8-9 d'estate e 7-8 d'inverno). Ordini ritirati/consegnati esclusi. Una POST sulla stessa funzione invia una notifica di prova al dispositivo dell'utente loggato.
+Iscrizioni salvate nella tabella `push_subscriptions` (migrazione in `schema.sql`; colonna `anticipi`: 1 = il giorno prima, 2 = due giorni prima). L'invio lo fa la funzione serverless Vercel `api/promemoria.js`, lanciata da Vercel Cron alle 06:00 UTC (`vercel.json`; sul piano Hobby parte entro quell'ora, quindi circa 8-9 d'estate e 7-8 d'inverno). Un avviso per ordine (scelta di Mauro del 2026-10-04, al posto del riepilogo unico), con link `/?ordine=<id>` che apre la scheda. Ordini ritirati/consegnati esclusi. Una POST sulla stessa funzione invia una notifica di prova al dispositivo dell'utente loggato.
 Variabili d'ambiente su Vercel: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `CRON_SECRET`, `SUPABASE_SECRET_KEY` (valori nel file locale `.env.local`, escluso da git). La chiave pubblica VAPID è anche in `index.html` (`VAPID_PUBLIC`): se si rigenerano le chiavi vanno cambiate in entrambi i posti e ogni dispositivo deve riattivare i promemoria.
 Su iPhone funzionano solo dall'app aggiunta alla schermata Home (iOS 16.4+); su Android anche da Chrome. Con "Esci" il dispositivo viene disiscritto.
 

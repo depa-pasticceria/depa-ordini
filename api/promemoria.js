@@ -1,5 +1,5 @@
 // Promemoria push sugli ordini in arrivo.
-// GET  (Vercel Cron, ogni mattina): per ogni dispositivo iscritto invia l'elenco degli ordini
+// GET  (Vercel Cron, ogni mattina): per ogni dispositivo iscritto invia un avviso per ciascun ordine
 //      di domani e/o dopodomani, in base agli "anticipi" scelti su quel dispositivo.
 // POST (dall'app, utente loggato): invia una notifica di prova al dispositivo indicato.
 import webpush from 'web-push';
@@ -8,8 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL = 'https://yqjiijsjqlaqkidhhzgd.supabase.co';
 const GG = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
 const MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
-const QUANDO = { 1: 'Domani', 2: 'Tra due giorni' };
-const MAX_RIGHE = 4;
+const QUANDO = { 1: 'Domani', 2: 'Dopodomani' };
 
 const romeToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome' }).format(new Date());
 function plusDays(s, n) { const d = new Date(s + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
@@ -23,14 +22,16 @@ function setupVapid() {
   webpush.setVapidDetails('mailto:depa.marketing0@gmail.com', process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
 }
 
-function message(n, giorno, list) {
-  const righe = list.map(o => `${o.ora} ${o.cliente}, ${o.qty} × ${o.prodotto}${o.modalita === 'consegna' ? ' (consegna)' : ''}`);
-  const body = righe.slice(0, MAX_RIGHE).join('\n') + (righe.length > MAX_RIGHE ? `\ne altri ${righe.length - MAX_RIGHE}` : '');
+// Un avviso per ordine; toccandolo l'app si apre sulla scheda di quell'ordine
+export function message(n, o) {
+  const righe = [`${o.qty} × ${o.prodotto}, ${o.modalita === 'consegna' ? 'consegna' : 'ritiro'} ${dayLabel(o.ritiro)}`];
+  if (o.scritta) righe.push(`Scritta: "${o.scritta}"`);
+  if (o.allergeni) righe.push(`Allergeni: ${o.allergeni}`);
   return {
-    title: `${QUANDO[n]}, ${dayLabel(giorno)}: ${list.length} ${list.length === 1 ? 'ordine' : 'ordini'}`,
-    body,
-    tag: 'promemoria-' + giorno,
-    url: '/'
+    title: `${QUANDO[n]} alle ${o.ora}: ${o.cliente}`,
+    body: righe.join('\n'),
+    tag: `ordine-${o.id}-${n}`,
+    url: '/?ordine=' + o.id
   };
 }
 
@@ -59,24 +60,25 @@ async function runDaily(sb) {
   const today = romeToday();
   const giorni = { 1: plusDays(today, 1), 2: plusDays(today, 2) };
   const { data: ordini, error: e2 } = await sb.from('ordini')
-    .select('cliente, qty, prodotto, ora, modalita, ritiro, stato')
+    .select('id, cliente, qty, prodotto, ora, modalita, ritiro, scritta, allergeni, stato')
     .in('ritiro', Object.values(giorni))
     .not('stato', 'in', '(ritirato,consegnato)')
     .order('ora');
   if (e2) throw e2;
 
   const messaggi = {};
-  for (const n of [1, 2]) {
-    const list = ordini.filter(o => o.ritiro === giorni[n]);
-    if (list.length) messaggi[n] = message(n, giorni[n], list);
-  }
+  for (const n of [1, 2]) messaggi[n] = ordini.filter(o => o.ritiro === giorni[n]).map(o => message(n, o));
 
   const esiti = { ok: 0, expired: 0, error: 0 };
-  for (const sub of subs) {
+  await Promise.all(subs.map(async sub => {
     for (const n of sub.anticipi || [1]) {
-      if (messaggi[n]) esiti[await send(sb, sub, messaggi[n])]++;
+      for (const m of messaggi[n] || []) {
+        const esito = await send(sb, sub, m);
+        esiti[esito]++;
+        if (esito === 'expired') return;
+      }
     }
-  }
+  }));
   return { today, ordini: ordini.length, dispositivi: subs.length, ...esiti };
 }
 

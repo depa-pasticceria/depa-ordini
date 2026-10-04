@@ -295,7 +295,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 
   <section id="v-notifiche" hidden>
     <button class="ghost" data-back="altro" style="margin-bottom:16px">← Indietro</button>
-    <p class="phint" style="font-size:15px;color:var(--ink)">Ogni mattina questo dispositivo riceve l’elenco degli ordini in arrivo, anche ad app chiusa.</p>
+    <p class="phint" style="font-size:15px;color:var(--ink)">Ogni mattina questo dispositivo riceve un avviso per ogni ordine in arrivo, anche ad app chiusa.</p>
     <div class="f"><span class="lbl">Quando avvisare</span>
       <div class="chips" id="anticipi"></div></div>
     <button class="primary" id="pushToggle" hidden>Attiva su questo dispositivo</button>
@@ -759,7 +759,13 @@ async function enterApp(){
   renderAll();
   subscribeRealtime();
   syncPushSub();
+  // Aperta dal tocco su un promemoria: mostra subito quell'ordine
+  const pid=new URLSearchParams(location.search).get('ordine');
+  if(pid){history.replaceState(null,'',location.pathname);openSheet(pid)}
 }
+if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',e=>{
+  if(e.data&&e.data.type==='apri-ordine'&&!$('#app').hidden){show('agenda');openSheet(e.data.id)}
+});
 function showLogin(){
   unsubscribeRealtime();
   $('#app').hidden=true;

@@ -47,9 +47,11 @@ self.addEventListener('notificationclick', e => {
   const url = new URL((e.notification.data && e.notification.data.url) || '/', self.location.origin).href;
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      // App già aperta: le chiede di mostrare l'ordine, senza ricaricare la pagina
+      const ordine = new URL(url).searchParams.get('ordine');
       for (const c of list) {
         if (c.url.startsWith(self.location.origin) && 'focus' in c) {
-          if ('navigate' in c) c.navigate(url);
+          if (ordine) c.postMessage({ type: 'apri-ordine', id: ordine });
           return c.focus();
         }
       }
