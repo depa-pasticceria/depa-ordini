@@ -89,13 +89,21 @@ async function runTest(sb, req) {
   const endpoint = req.body && req.body.endpoint;
   const { data: sub } = await sb.from('push_subscriptions').select('*').eq('endpoint', endpoint || '').maybeSingle();
   if (!sub) return [404, { error: 'dispositivo non iscritto' }];
-  const esito = await send(sb, sub, {
-    title: 'DEPA Ordini',
-    body: 'Notifiche attive. Riceverai qui i promemoria degli ordini in arrivo.',
-    tag: 'prova',
-    url: '/'
-  });
+  const esito = await send(sb, sub, esempio());
   return [esito === 'ok' ? 200 : 502, { esito }];
+}
+
+// Notifica di prova: identica a un promemoria vero, ma su un ordine inventato.
+// L'ultima riga la distingue, così nessuno la scambia per un ordine da preparare.
+export function esempio() {
+  const today = romeToday();
+  // Il lunedì il negozio è chiuso: in quel caso l'esempio cade su dopodomani
+  const n = new Date(plusDays(today, 1) + 'T12:00:00Z').getUTCDay() === 1 ? 2 : 1;
+  const m = message(n, {
+    id: 'esempio', cliente: 'Mario Rossi', qty: 1, prodotto: 'Torta chantilly e amarene', ora: '17:00',
+    modalita: 'ritiro', ritiro: plusDays(today, n), scritta: 'Auguri Anna', allergeni: 'no frutta a guscio'
+  });
+  return { ...m, body: m.body + '\nEsempio: questo ordine non esiste', tag: 'prova', url: '/' };
 }
 
 export default async function handler(req, res) {
